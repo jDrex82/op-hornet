@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hornet.fullname" . }}-api
+  labels:
+    {{- include "hornet.labels" . | nindent 4 }}
+    component: api
+spec:
+  replicas: {{ .Values.replicaCount.api }}
+  selector:
+    matchLabels:
+      {{- include "hornet.selectorLabels" . | nindent 6 }}
+      component: api
+  template:
+    metadata:
+      labels:
+        {{- include "hornet.selectorLabels" . | nindent 8 }}
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ include "hornet.fullname" . }}-config
+            - secretRef:
+                name: {{ include "hornet.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.resources.api | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 8000
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8000
+            initialDelaySeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hornet.fullname" . }}-worker
+  labels:
+    {{- include "hornet.labels" . | nindent 4 }}
+    component: worker
+spec:
+  replicas: {{ .Values.replicaCount.worker }}
+  selector:
+    matchLabels:
+      {{- include "hornet.selectorLabels" . | nindent 6 }}
+      component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "hornet.selectorLabels" . | nindent 8 }}
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "hornet.worker"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "hornet.fullname" . }}-config
+            - secretRef:
+                name: {{ include "hornet.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.resources.worker | nindent 12 }}

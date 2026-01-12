@@ -1,0 +1,21 @@
+{
+  "event_type": "endpoint.ransomware_detected",
+  "source": "crowdstrike",
+  "source_type": "edr",
+  "severity": "CRITICAL",
+  "timestamp": "2024-01-15T14:35:00Z",
+  "entities": [
+    {"type": "host", "value": "WORKSTATION-042"},
+    {"type": "user", "value": "jsmith"},
+    {"type": "hash", "value": "a1b2c3d4e5f6..."},
+    {"type": "process", "value": "cryptolocker.exe"}
+  ],
+  "raw_payload": {
+    "detection_name": "Ransom.CryptoLocker",
+    "file_path": "C:\\Users\\jsmith\\Downloads\\invoice.exe",
+    "parent_process": "outlook.exe",
+    "files_encrypted": 150,
+    "encryption_rate_per_second": 5,
+    "network_shares_accessed": ["\\\\fileserver\\finance", "\\\\fileserver\\hr"]
+  }
+}

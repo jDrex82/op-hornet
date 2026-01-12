@@ -1,0 +1,63 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "hornet-agents",
+    "title": "HORNET - Agent Performance",
+    "tags": ["hornet", "agents"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "agent",
+          "type": "query",
+          "query": "label_values(hornet_agent_calls_total, agent)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Agent Calls by Status",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {"expr": "sum(rate(hornet_agent_calls_total{agent=~'$agent', status='success'}[5m])) by (agent)", "legendFormat": "{{agent}} success"},
+          {"expr": "sum(rate(hornet_agent_calls_total{agent=~'$agent', status='error'}[5m])) by (agent)", "legendFormat": "{{agent}} error"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Agent Latency Distribution",
+        "type": "heatmap",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [{"expr": "sum(rate(hornet_agent_latency_seconds_bucket{agent=~'$agent'}[5m])) by (le, agent)"}]
+      },
+      {
+        "id": 3,
+        "title": "Confidence Distribution",
+        "type": "histogram",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [{"expr": "sum(rate(hornet_confidence_distribution_bucket{agent=~'$agent'}[5m])) by (le, agent)"}]
+      },
+      {
+        "id": 4,
+        "title": "Tokens per Agent",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [{"expr": "sum(increase(hornet_tokens_used_total{agent=~'$agent'}[24h])) by (agent)", "legendFormat": "{{agent}}"}]
+      },
+      {
+        "id": 5,
+        "title": "Agent Health Status",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [{"expr": "hornet_agent_health", "format": "table", "instant": true}],
+        "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true}}}]
+      }
+    ],
+    "schemaVersion": 38
+  }
+}

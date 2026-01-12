@@ -1,0 +1,22 @@
+{
+  "event_type": "dlp.exfiltration_attempt",
+  "source": "netskope",
+  "source_type": "casb",
+  "severity": "CRITICAL",
+  "timestamp": "2024-01-15T14:40:00Z",
+  "entities": [
+    {"type": "user", "value": "mwilson"},
+    {"type": "ip", "value": "10.0.1.50"},
+    {"type": "domain", "value": "mega.nz"}
+  ],
+  "raw_payload": {
+    "data_volume_mb": 500,
+    "file_count": 1200,
+    "file_types": [".docx", ".xlsx", ".pdf", ".pptx"],
+    "destination": "mega.nz",
+    "classification": "CONFIDENTIAL",
+    "user_department": "Engineering",
+    "upload_duration_minutes": 45,
+    "normal_daily_upload_mb": 10
+  }
+}

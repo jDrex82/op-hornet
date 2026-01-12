@@ -1,0 +1,14 @@
+apiVersion: v2
+name: hornet
+description: HORNET - Autonomous SOC Swarm
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+keywords:
+  - security
+  - soc
+  - ai
+  - autonomous
+maintainers:
+  - name: HORNET Team
+home: https://github.com/hornet/hornet

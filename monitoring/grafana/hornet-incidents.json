@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "hornet-incidents",
+    "title": "HORNET - Incident Analysis",
+    "tags": ["hornet", "incidents"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Incident Outcomes",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+        "targets": [{"expr": "sum(increase(hornet_incidents_total[24h])) by (outcome)", "legendFormat": "{{outcome}}"}]
+      },
+      {
+        "id": 2,
+        "title": "Mean Time to Detect (MTTD)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 8, "y": 0},
+        "targets": [{"expr": "histogram_quantile(0.5, rate(hornet_incident_duration_seconds_bucket{severity='CRITICAL'}[24h]))", "legendFormat": "MTTD (Critical)"}],
+        "fieldConfig": {"defaults": {"unit": "s"}}
+      },
+      {
+        "id": 3,
+        "title": "Mean Time to Respond (MTTR)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0},
+        "targets": [{"expr": "histogram_quantile(0.5, rate(hornet_action_duration_seconds_bucket[24h]))", "legendFormat": "MTTR"}],
+        "fieldConfig": {"defaults": {"unit": "s"}}
+      },
+      {
+        "id": 4,
+        "title": "Veto Analysis",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [{"expr": "sum(rate(hornet_veto_total[1h])) by (veto_type, constraint) * 3600", "legendFormat": "{{veto_type}}: {{constraint}}"}]
+      },
+      {
+        "id": 5,
+        "title": "Actions Executed",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [{"expr": "sum(rate(hornet_actions_total[5m])) by (action_type, status) * 300", "legendFormat": "{{action_type}} ({{status}})"}]
+      },
+      {
+        "id": 6,
+        "title": "Incident State Distribution",
+        "type": "bargauge",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
+        "targets": [{"expr": "sum(hornet_active_incidents) by (state)", "legendFormat": "{{state}}"}]
+      }
+    ],
+    "schemaVersion": 38
+  }
+}

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hornet.fullname" . }}-worker
+  labels:
+    {{- include "hornet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount.worker }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "hornet.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "hornet.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "hornet.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: worker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "hornet.worker"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "hornet.fullname" . }}-config
+            - secretRef:
+                name: {{ include "hornet.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.resources.worker | nindent 12 }}

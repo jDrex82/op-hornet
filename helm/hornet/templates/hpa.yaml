@@ -1,0 +1,49 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "hornet.fullname" . }}-api
+  labels:
+    {{- include "hornet.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "hornet.fullname" . }}-api
+  minReplicas: {{ .Values.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.api.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetCPUUtilization }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetMemoryUtilization }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "hornet.fullname" . }}-worker
+  labels:
+    {{- include "hornet.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "hornet.fullname" . }}-worker
+  minReplicas: {{ .Values.autoscaling.worker.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.worker.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.worker.targetCPUUtilization }}
+{{- end }}

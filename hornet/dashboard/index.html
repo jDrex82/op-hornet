@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HORNET - Autonomous SOC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-96">
+            <div class="flex items-center justify-center mb-6">
+                <span class="text-4xl">🐝</span>
+                <h1 class="text-2xl font-bold ml-2">HORNET</h1>
+            </div>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-sm mb-2">API Key</label>
+                    <input type="password" id="apiKey" placeholder="hnt_..." 
+                        class="w-full p-3 bg-gray-700 rounded border border-gray-600 focus:border-yellow-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-yellow-500 text-black font-bold py-3 rounded hover:bg-yellow-400">
+                    Sign In
+                </button>
+                <p id="loginError" class="text-red-500 text-sm mt-2 hidden">Invalid API key</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard (hidden until auth) -->
+    <div id="dashboard" class="hidden">
+        <!-- Header -->
+        <header class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <span class="text-3xl">🐝</span>
+                    <h1 class="text-xl font-bold ml-2">HORNET</h1>
+                    <span class="ml-4 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded">OPERATIONAL</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="tenantName" class="text-gray-400"></span>
+                    <button onclick="logout()" class="text-gray-400 hover:text-white">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 p-6">
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">Active Incidents</div>
+                <div id="activeIncidents" class="text-3xl font-bold text-yellow-500">-</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">Events/Hour</div>
+                <div id="eventsHour" class="text-3xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">Agents Online</div>
+                <div id="agentsOnline" class="text-3xl font-bold text-green-500">-</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-gray-400 text-sm">Automation Rate</div>
+                <div id="automationRate" class="text-3xl font-bold">-</div>
+            </div>
+        </div>
+
+        <!-- Incidents Table -->
+        <div class="px-6">
+            <div class="bg-gray-800 rounded-lg">
+                <div class="px-4 py-3 border-b border-gray-700 flex justify-between items-center">
+                    <h2 class="font-bold">Active Incidents</h2>
+                    <select id="stateFilter" class="bg-gray-700 rounded px-3 py-1 text-sm">
+                        <option value="">All States</option>
+                        <option value="DETECTION">Detection</option>
+                        <option value="ANALYSIS">Analysis</option>
+                        <option value="ESCALATED">Escalated</option>
+                    </select>
+                </div>
+                <table class="w-full">
+                    <thead class="text-gray-400 text-sm">
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left p-4">ID</th>
+                            <th class="text-left p-4">State</th>
+                            <th class="text-left p-4">Severity</th>
+                            <th class="text-left p-4">Confidence</th>
+                            <th class="text-left p-4">Tokens</th>
+                            <th class="text-left p-4">Age</th>
+                            <th class="text-left p-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incidentsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let apiKey = localStorage.getItem('hornet_api_key');
+        let ws = null;
+
+        // Check existing auth
+        if (apiKey) {
+            validateAndShowDashboard();
+        }
+
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            apiKey = document.getElementById('apiKey').value;
+            
+            const valid = await validateApiKey(apiKey);
+            if (valid) {
+                localStorage.setItem('hornet_api_key', apiKey);
+                validateAndShowDashboard();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        });
+
+        async function validateApiKey(key) {
+            try {
+                const resp = await fetch('/api/v1/health/agents', {
+                    headers: { 'X-API-Key': key }
+                });
+                return resp.ok;
+            } catch {
+                return false;
+            }
+        }
+
+        async function validateAndShowDashboard() {
+            const valid = await validateApiKey(apiKey);
+            if (valid) {
+                document.getElementById('loginModal').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadDashboard();
+                connectWebSocket();
+            } else {
+                localStorage.removeItem('hornet_api_key');
+                apiKey = null;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('hornet_api_key');
+            if (ws) ws.close();
+            location.reload();
+        }
+
+        async function loadDashboard() {
+            // Load agents
+            const agentsResp = await fetch('/api/v1/health/agents', { headers: { 'X-API-Key': apiKey } });
+            const agents = await agentsResp.json();
+            document.getElementById('agentsOnline').textContent = agents.total_agents || 0;
+
+            // Load incidents
+            await loadIncidents();
+        }
+
+        async function loadIncidents() {
+            const state = document.getElementById('stateFilter').value;
+            const url = state ? `/api/v1/incidents?state=${state}` : '/api/v1/incidents';
+            
+            const resp = await fetch(url, { headers: { 'X-API-Key': apiKey } });
+            const data = await resp.json();
+            
+            document.getElementById('activeIncidents').textContent = data.data?.length || 0;
+            
+            const tbody = document.getElementById('incidentsTable');
+            tbody.innerHTML = data.data?.map(inc => `
+                <tr class="border-b border-gray-700 hover:bg-gray-750">
+                    <td class="p-4 font-mono text-sm">${inc.id.substring(0, 8)}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs ${getStateColor(inc.state)}">${inc.state}</span></td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs ${getSeverityColor(inc.severity)}">${inc.severity || '-'}</span></td>
+                    <td class="p-4">${(inc.confidence * 100).toFixed(0)}%</td>
+                    <td class="p-4">${inc.tokens_used?.toLocaleString() || 0} / ${inc.token_budget?.toLocaleString() || 50000}</td>
+                    <td class="p-4">${getAge(inc.created_at)}</td>
+                    <td class="p-4">
+                        <button onclick="viewIncident('${inc.id}')" class="text-yellow-500 hover:text-yellow-400 text-sm">View</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-500">No incidents</td></tr>';
+        }
+
+        function connectWebSocket() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/api/v1/ws/default-tenant?api_key=${apiKey}`);
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'incident_update') {
+                    loadIncidents();
+                }
+            };
+            
+            ws.onclose = () => setTimeout(connectWebSocket, 5000);
+        }
+
+        function getStateColor(state) {
+            const colors = {
+                'DETECTION': 'bg-blue-500/20 text-blue-400',
+                'ENRICHMENT': 'bg-purple-500/20 text-purple-400',
+                'ANALYSIS': 'bg-indigo-500/20 text-indigo-400',
+                'PROPOSAL': 'bg-cyan-500/20 text-cyan-400',
+                'OVERSIGHT': 'bg-orange-500/20 text-orange-400',
+                'EXECUTION': 'bg-green-500/20 text-green-400',
+                'ESCALATED': 'bg-red-500/20 text-red-400',
+                'CLOSED': 'bg-gray-500/20 text-gray-400',
+            };
+            return colors[state] || 'bg-gray-500/20 text-gray-400';
+        }
+
+        function getSeverityColor(sev) {
+            const colors = {
+                'CRITICAL': 'bg-red-500/20 text-red-400',
+                'HIGH': 'bg-orange-500/20 text-orange-400',
+                'MEDIUM': 'bg-yellow-500/20 text-yellow-400',
+                'LOW': 'bg-green-500/20 text-green-400',
+            };
+            return colors[sev] || 'bg-gray-500/20 text-gray-400';
+        }
+
+        function getAge(timestamp) {
+            const diff = Date.now() - new Date(timestamp).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 60) return `${mins}m`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours}h`;
+            return `${Math.floor(hours / 24)}d`;
+        }
+
+        async function viewIncident(id) {
+            const resp = await fetch(`/api/v1/incidents/${id}`, { headers: { 'X-API-Key': apiKey } });
+            const inc = await resp.json();
+            alert(JSON.stringify(inc, null, 2));
+        }
+
+        // Auto-refresh
+        document.getElementById('stateFilter').addEventListener('change', loadIncidents);
+        setInterval(loadIncidents, 30000);
+    </script>
+</body>
+</html>

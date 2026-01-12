@@ -1,0 +1,23 @@
+{
+  "event_type": "email.phishing_detected",
+  "source": "proofpoint",
+  "source_type": "email_gateway",
+  "severity": "HIGH",
+  "timestamp": "2024-01-15T14:45:00Z",
+  "entities": [
+    {"type": "email", "value": "victim@company.com"},
+    {"type": "email", "value": "attacker@evil.com"},
+    {"type": "url", "value": "https://login-microsoft.evil.com/oauth"},
+    {"type": "domain", "value": "login-microsoft.evil.com"}
+  ],
+  "raw_payload": {
+    "subject": "Urgent: Password Expiration Notice",
+    "sender_display": "IT Support",
+    "sender_domain_age_days": 2,
+    "url_reputation": "MALICIOUS",
+    "recipients_count": 50,
+    "clicked_count": 3,
+    "credentials_entered": 1,
+    "brand_impersonated": "Microsoft"
+  }
+}

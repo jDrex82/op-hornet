@@ -1,0 +1,24 @@
+{
+  "event_type": "network.lateral_movement",
+  "source": "darktrace",
+  "source_type": "ndr",
+  "severity": "HIGH",
+  "timestamp": "2024-01-15T14:50:00Z",
+  "entities": [
+    {"type": "ip", "value": "10.0.1.100"},
+    {"type": "ip", "value": "10.0.2.50"},
+    {"type": "ip", "value": "10.0.2.51"},
+    {"type": "ip", "value": "10.0.3.10"},
+    {"type": "user", "value": "svc_backup"}
+  ],
+  "raw_payload": {
+    "source_host": "WORKSTATION-100",
+    "targets": ["SERVER-050", "SERVER-051", "DC-01"],
+    "protocol": "SMB",
+    "authentication_type": "NTLM",
+    "time_window_minutes": 10,
+    "shares_accessed": ["C$", "ADMIN$", "SYSVOL"],
+    "unusual_for_user": true,
+    "service_account_interactive": true
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "hornet-overview",
+    "title": "HORNET - Overview",
+    "tags": ["hornet", "security"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Incidents",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [{"expr": "sum(hornet_active_incidents)", "legendFormat": "Active"}],
+        "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 10}]}}}
+      },
+      {
+        "id": 2,
+        "title": "Incidents/Hour",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [{"expr": "sum(rate(hornet_incidents_total[1h])) * 3600", "legendFormat": "Rate"}]
+      },
+      {
+        "id": 3,
+        "title": "Agent Health",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [{"expr": "avg(hornet_agent_health) * 100", "legendFormat": "Health %"}],
+        "fieldConfig": {"defaults": {"min": 0, "max": 100, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 80}, {"color": "green", "value": 95}]}}}
+      },
+      {
+        "id": 4,
+        "title": "Automation Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [{"expr": "sum(rate(hornet_actions_total{auto_approved='true'}[24h])) / sum(rate(hornet_actions_total[24h])) * 100", "legendFormat": "Auto %"}]
+      },
+      {
+        "id": 5,
+        "title": "Incidents by Severity",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {"expr": "sum(rate(hornet_incidents_total{severity='CRITICAL'}[5m])) * 300", "legendFormat": "Critical"},
+          {"expr": "sum(rate(hornet_incidents_total{severity='HIGH'}[5m])) * 300", "legendFormat": "High"},
+          {"expr": "sum(rate(hornet_incidents_total{severity='MEDIUM'}[5m])) * 300", "legendFormat": "Medium"},
+          {"expr": "sum(rate(hornet_incidents_total{severity='LOW'}[5m])) * 300", "legendFormat": "Low"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Agent Latency (p95)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [{"expr": "histogram_quantile(0.95, rate(hornet_agent_latency_seconds_bucket[5m]))", "legendFormat": "{{agent}}"}]
+      },
+      {
+        "id": 7,
+        "title": "Incident Duration by Severity",
+        "type": "heatmap",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [{"expr": "sum(rate(hornet_incident_duration_seconds_bucket[5m])) by (le, severity)"}]
+      },
+      {
+        "id": 8,
+        "title": "Token Usage",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [{"expr": "sum(rate(hornet_tokens_used_total[5m])) by (agent)", "legendFormat": "{{agent}}"}]
+      },
+      {
+        "id": 9,
+        "title": "Events Ingested",
+        "type": "timeseries",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 20},
+        "targets": [{"expr": "sum(rate(hornet_events_total[5m])) * 300", "legendFormat": "Events/5m"}]
+      },
+      {
+        "id": 10,
+        "title": "Queue Depth",
+        "type": "timeseries",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 20},
+        "targets": [{"expr": "hornet_queue_depth", "legendFormat": "{{queue_name}}"}]
+      },
+      {
+        "id": 11,
+        "title": "Escalations",
+        "type": "timeseries",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 20},
+        "targets": [{"expr": "sum(rate(hornet_escalations_total[1h])) * 3600", "legendFormat": "Escalations/hr"}]
+      }
+    ],
+    "schemaVersion": 38
+  }
+}

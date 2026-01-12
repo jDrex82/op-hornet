@@ -1,0 +1,94 @@
+groups:
+  - name: hornet.rules
+    rules:
+      # SLO: 95% of incidents resolved in <30 minutes
+      - record: hornet:incident_resolution_slo
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(hornet_incident_duration_seconds_bucket[1h])) by (le)
+          ) < 1800
+
+      # False positive rate
+      - record: hornet:false_positive_rate
+        expr: |
+          sum(rate(hornet_incidents_total{outcome="FALSE_POSITIVE"}[24h])) /
+          sum(rate(hornet_incidents_total[24h]))
+
+  - name: hornet.alerts
+    rules:
+      - alert: HornetHighErrorRate
+        expr: |
+          sum(rate(hornet_agent_calls_total{status="error"}[5m])) /
+          sum(rate(hornet_agent_calls_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High agent error rate
+          description: "Agent error rate is {{ $value | humanizePercentage }}"
+
+      - alert: HornetIntegrationDown
+        expr: hornet_integration_health == 0
+        for: 3m
+        labels:
+          severity: high
+        annotations:
+          summary: "Integration {{ $labels.integration_name }} is down"
+
+      - alert: HornetQueueBacklog
+        expr: hornet_queue_depth > 100
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: Event queue backlog
+          description: "Queue {{ $labels.queue_name }} has {{ $value }} items"
+
+      - alert: HornetCriticalIncidentUnattended
+        expr: |
+          sum(hornet_active_incidents{state="ESCALATED", severity="CRITICAL"}) > 0
+        for: 5m
+        labels:
+          severity: critical
+          pager: "true"
+        annotations:
+          summary: Critical incident needs human attention
+          description: "{{ $value }} critical incidents awaiting human review"
+
+      - alert: HornetHighFalsePositiveRate
+        expr: hornet:false_positive_rate > 0.1
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: High false positive rate
+          description: "FP rate is {{ $value | humanizePercentage }}, consider tuning thresholds"
+
+      - alert: HornetAgentLatencyHigh
+        expr: |
+          histogram_quantile(0.95, rate(hornet_agent_latency_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent }} latency is high"
+          description: "p95 latency is {{ $value | humanizeDuration }}"
+
+      - alert: HornetLLMRateLimited
+        expr: |
+          sum(rate(hornet_llm_errors_total{error="rate_limited"}[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: LLM API rate limiting detected
+
+      - alert: HornetDLQGrowing
+        expr: |
+          delta(hornet_dlq_size[1h]) > 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Dead letter queue growing
+          description: "DLQ has grown by {{ $value }} in the last hour"

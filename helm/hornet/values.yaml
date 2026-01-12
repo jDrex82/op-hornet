@@ -1,0 +1,143 @@
+# Default values for HORNET
+
+replicaCount:
+  api: 3
+  worker: 5
+
+image:
+  repository: ghcr.io/hornet/hornet
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to chart appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: hornet.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hornet-tls
+      hosts:
+        - hornet.example.com
+
+resources:
+  api:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  worker:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+  worker:
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilization: 70
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Configuration
+config:
+  environment: production
+  logLevel: INFO
+  debug: false
+  maxAgentsPerIncident: 12
+  tokenBudgetPerIncident: 50000
+  thresholds:
+    dismiss: 0.30
+    investigate: 0.60
+    confirm: 0.80
+
+# Secrets (use external secrets in production)
+secrets:
+  anthropicApiKey: ""
+  openaiApiKey: ""
+  secretKey: ""
+
+# PostgreSQL
+postgresql:
+  enabled: true
+  auth:
+    username: hornet
+    password: ""
+    database: hornet
+  primary:
+    persistence:
+      size: 100Gi
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+
+# Redis
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 10Gi
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true
+
+# Network policies
+networkPolicy:
+  enabled: true

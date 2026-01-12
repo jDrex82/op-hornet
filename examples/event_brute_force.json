@@ -1,0 +1,19 @@
+{
+  "event_type": "auth.brute_force",
+  "source": "auth_gateway",
+  "source_type": "siem",
+  "severity": "HIGH",
+  "timestamp": "2024-01-15T14:30:00Z",
+  "entities": [
+    {"type": "ip", "value": "192.168.1.100"},
+    {"type": "user", "value": "admin"},
+    {"type": "host", "value": "web-server-01"}
+  ],
+  "raw_payload": {
+    "failed_attempts": 50,
+    "time_window_seconds": 300,
+    "source_country": "CN",
+    "target_service": "ssh",
+    "unique_passwords": 48
+  }
+}

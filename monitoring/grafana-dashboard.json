@@ -1,0 +1,82 @@
+{
+  "dashboard": {
+    "title": "HORNET SOC Dashboard",
+    "uid": "hornet-main",
+    "timezone": "browser",
+    "refresh": "10s",
+    "panels": [
+      {
+        "title": "Active Incidents",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [{"expr": "sum(hornet_active_incidents)", "legendFormat": "Active"}]
+      },
+      {
+        "title": "Incidents by Severity",
+        "type": "piechart",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "targets": [{"expr": "sum by (severity) (hornet_active_incidents)", "legendFormat": "{{severity}}"}]
+      },
+      {
+        "title": "Event Ingestion Rate",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 4},
+        "targets": [{"expr": "rate(hornet_events_total[5m])", "legendFormat": "{{event_type}}"}]
+      },
+      {
+        "title": "Agent Call Latency (p95)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+        "targets": [{"expr": "histogram_quantile(0.95, rate(hornet_agent_latency_seconds_bucket[5m]))", "legendFormat": "{{agent}}"}]
+      },
+      {
+        "title": "Agent Error Rate",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+        "targets": [{"expr": "rate(hornet_agent_calls_total{status='error'}[5m]) / rate(hornet_agent_calls_total[5m])", "legendFormat": "{{agent}}"}]
+      },
+      {
+        "title": "Token Usage",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 10, "w": 12, "h": 6},
+        "targets": [{"expr": "sum by (model) (rate(hornet_tokens_used_total[5m]))", "legendFormat": "{{model}}"}]
+      },
+      {
+        "title": "Queue Depth",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 10, "w": 12, "h": 6},
+        "targets": [{"expr": "hornet_queue_depth", "legendFormat": "{{queue_name}}"}]
+      },
+      {
+        "title": "Incident Resolution Time (p50)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 16, "w": 6, "h": 4},
+        "targets": [{"expr": "histogram_quantile(0.50, rate(hornet_incident_duration_seconds_bucket[1h]))", "legendFormat": "p50"}]
+      },
+      {
+        "title": "Escalation Rate",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 16, "w": 6, "h": 4},
+        "targets": [{"expr": "sum(rate(hornet_escalations_total[1h]))", "legendFormat": "Escalations/hr"}]
+      },
+      {
+        "title": "Integration Health",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 4},
+        "targets": [{"expr": "hornet_integration_health", "legendFormat": "{{integration_name}}"}]
+      },
+      {
+        "title": "Actions Executed",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 6},
+        "targets": [{"expr": "sum by (action_type, status) (rate(hornet_actions_total[5m]))", "legendFormat": "{{action_type}} - {{status}}"}]
+      },
+      {
+        "title": "Confidence Distribution",
+        "type": "heatmap",
+        "gridPos": {"x": 12, "y": 20, "w": 12, "h": 6},
+        "targets": [{"expr": "sum by (le) (rate(hornet_confidence_distribution_bucket[5m]))", "legendFormat": "{{le}}"}]
+      }
+    ]
+  }
+}

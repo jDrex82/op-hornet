@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hornet-api
+  namespace: hornet
+  labels:
+    app: hornet
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hornet
+      component: api
+  template:
+    metadata:
+      labels:
+        app: hornet
+        component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: hornet
+      containers:
+        - name: api
+          image: hornet:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: hornet-config
+            - secretRef:
+                name: hornet-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hornet-worker
+  namespace: hornet
+  labels:
+    app: hornet
+    component: worker
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: hornet
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: hornet
+        component: worker
+    spec:
+      serviceAccountName: hornet
+      containers:
+        - name: worker
+          image: hornet:latest
+          command: ["python", "-m", "hornet.worker"]
+          envFrom:
+            - configMapRef:
+                name: hornet-config
+            - secretRef:
+                name: hornet-secrets
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000

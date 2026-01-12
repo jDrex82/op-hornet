@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hornet-config
+  namespace: hornet
+data:
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  LOG_LEVEL: "INFO"
+  MAX_AGENTS_PER_INCIDENT: "12"
+  TOKEN_BUDGET_PER_INCIDENT: "50000"
+  THRESHOLD_DISMISS: "0.30"
+  THRESHOLD_INVESTIGATE: "0.60"
+  THRESHOLD_CONFIRM: "0.80"

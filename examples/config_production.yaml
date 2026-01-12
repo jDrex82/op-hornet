@@ -1,0 +1,146 @@
+# HORNET Production Configuration
+
+environment: production
+debug: false
+log_level: INFO
+
+# API Configuration
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  cors_origins:
+    - https://soc.company.com
+    - https://dashboard.company.com
+
+# Database
+database:
+  url: postgresql+asyncpg://hornet:${DB_PASSWORD}@postgres-cluster:5432/hornet
+  pool_size: 20
+  max_overflow: 10
+  echo: false
+
+# Redis
+redis:
+  url: redis://redis-cluster:6379/0
+  max_connections: 50
+
+# Detection Thresholds
+thresholds:
+  dismiss: 0.30
+  investigate: 0.60
+  confirm: 0.80
+
+# Token Budget
+token_budget:
+  per_incident: 50000
+  warning_threshold: 0.80
+  force_transition_threshold: 0.90
+  close_threshold: 0.95
+
+# Agent Configuration
+agents:
+  max_per_incident: 12
+  timeout_seconds: 30
+  model: claude-sonnet-4-20250514
+  temperature: 0.1
+
+# Timeouts (seconds)
+state_timeouts:
+  detection: 15
+  enrichment: 10
+  analysis: 30
+  proposal: 20
+  oversight: 30
+  execution: 60
+  escalated: 1800
+
+# Integrations
+integrations:
+  log_sources:
+    - type: cloudflare
+      enabled: true
+      config:
+        zone_id: ${CLOUDFLARE_ZONE_ID}
+        api_token: ${CLOUDFLARE_API_TOKEN}
+    - type: aws_cloudtrail
+      enabled: true
+      config:
+        region: us-east-1
+        log_group: /aws/cloudtrail
+    - type: crowdstrike
+      enabled: true
+      config:
+        client_id: ${CS_CLIENT_ID}
+        client_secret: ${CS_CLIENT_SECRET}
+  
+  action_connectors:
+    - type: paloalto
+      enabled: true
+      config:
+        host: ${PALO_HOST}
+        api_key: ${PALO_API_KEY}
+    - type: okta
+      enabled: true
+      config:
+        domain: company.okta.com
+        api_token: ${OKTA_API_TOKEN}
+    - type: crowdstrike
+      enabled: true
+      config:
+        client_id: ${CS_CLIENT_ID}
+        client_secret: ${CS_CLIENT_SECRET}
+  
+  notifications:
+    - type: slack
+      enabled: true
+      config:
+        webhook_url: ${SLACK_WEBHOOK}
+        channel: "#soc-alerts"
+    - type: pagerduty
+      enabled: true
+      config:
+        integration_key: ${PD_INTEGRATION_KEY}
+        severity_mapping:
+          CRITICAL: critical
+          HIGH: error
+          MEDIUM: warning
+          LOW: info
+
+# Observability
+observability:
+  metrics:
+    enabled: true
+    port: 9090
+  tracing:
+    enabled: true
+    otlp_endpoint: http://otel-collector:4317
+  logging:
+    format: json
+    level: INFO
+
+# Security
+security:
+  encryption_key: ${ENCRYPTION_KEY}
+  api_key_prefix: hnt_
+  session_timeout_minutes: 60
+  max_login_attempts: 5
+
+# Retention
+retention:
+  events_days: 90
+  incidents_days: 365
+  audit_log_days: 2555  # 7 years for compliance
+
+# Tuner
+tuner:
+  enabled: true
+  min_samples: 50
+  max_adjustment_percent: 0.10
+  window_days: 7
+  auto_apply_threshold: 0.80
+
+# Research Mode (AI safety)
+research:
+  enabled: false
+  sampling_rate: 0.10
