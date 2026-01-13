@@ -923,6 +923,19 @@ class BaseAgent(ABC):
                 for block in response.content:
                     if hasattr(block, "text"):
                         response_text += block.text
+
+                # NUDGE: If Claude is silent after tool calls, force JSON output
+                if not response_text.strip() and tool_calls_made:
+                    logger.info("llm_nudge_required", agent=self.name, incident_id=str(context.incident_id))
+                    messages.append({"role": "user", "content": "Tool calls complete. Now provide your final response in the required JSON format only."})
+                    nudge_response = await self.client.messages.create(
+                        model=self.model, max_tokens=max_tokens, temperature=temperature,
+                        system=system_prompt, messages=messages
+                    )
+                    total_tokens += nudge_response.usage.input_tokens + nudge_response.usage.output_tokens
+                    for block in nudge_response.content:
+                        if hasattr(block, "text"):
+                            response_text += block.text
                 
                 logger.info(
                     "llm_call_complete",

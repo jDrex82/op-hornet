@@ -1,4 +1,4 @@
-﻿"""HORNET Incident Repository - Fixed"""
+"""HORNET Incident Repository - Fixed"""
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
@@ -103,5 +103,26 @@ class IncidentRepository:
             result = await session.execute(text(sql), params)
             return [dict(row) for row in result.mappings().all()]
 
+
+
+
+
+    async def add_finding(self, incident_id: UUID, agent: str, finding_type: str, confidence: float, content, reasoning: str = "", severity: str = "MEDIUM", tokens_consumed: int = 0) -> bool:
+        """Persist an agent finding to the database."""
+        async with async_session() as session:
+            try:
+                await session.execute(
+                    text("""INSERT INTO agent_findings (incident_id, agent, finding_type, confidence, content, reasoning, severity, tokens_consumed, created_at)
+                            VALUES (:inc_id, :agent, :type, :conf, :content, :reason, :sev, :tokens, NOW())"""),
+                    {"inc_id": incident_id, "agent": agent, "type": finding_type, "conf": confidence,
+                     "content": __import__("json").dumps(content) if isinstance(content, dict) else str(content),
+                     "reason": reasoning, "sev": severity, "tokens": tokens_consumed}
+                )
+                await session.commit()
+                logger.debug("finding_added", agent=agent, incident_id=str(incident_id))
+                return True
+            except Exception as e:
+                logger.error("add_finding_failed", agent=agent, error=str(e))
+                return False
 
 incident_repo = IncidentRepository()

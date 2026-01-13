@@ -1,4 +1,4 @@
-﻿"""
+"""
 HORNET Coordinator
 FSM-based incident coordination with agent orchestration.
 """
@@ -225,6 +225,7 @@ class Coordinator:
             output = await intel.process(agent_context)
             context.tokens_used += output.tokens_used
             context.findings.append(output)
+            await incident_repo.add_finding(context.incident_id, output.agent_name, output.output_type, output.confidence, output.content, output.reasoning, severity="MEDIUM", tokens_consumed=output.tokens_used)
             context.add_timeline_event("intel_enrichment", agent="intel")
         self._transition_state(context, FSMState.ANALYSIS)
     
@@ -235,6 +236,7 @@ class Coordinator:
             output = await analyst.process(agent_context)
             context.tokens_used += output.tokens_used
             context.findings.append(output)
+            await incident_repo.add_finding(context.incident_id, output.agent_name, output.output_type, output.confidence, output.content, output.reasoning, severity="MEDIUM", tokens_consumed=output.tokens_used)
             context.verdict = output.content
             context.confidence = output.confidence
             context.add_timeline_event("analyst_verdict", agent="analyst", details={"verdict": output.content.get("verdict")})
