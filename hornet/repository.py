@@ -125,4 +125,18 @@ class IncidentRepository:
                 logger.error("add_finding_failed", agent=agent, error=str(e))
                 return False
 
+
+    async def get_findings(self, incident_id: UUID) -> List[Dict[str, Any]]:
+        """Get all findings for an incident."""
+        async with async_session() as session:
+            try:
+                result = await session.execute(
+                    text("SELECT * FROM agent_findings WHERE incident_id = :id ORDER BY created_at"),
+                    {"id": incident_id}
+                )
+                return [dict(row) for row in result.mappings().all()]
+            except Exception as e:
+                logger.error("get_findings_failed", error=str(e))
+                return []
+
 incident_repo = IncidentRepository()
