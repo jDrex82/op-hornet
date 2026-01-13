@@ -1,4 +1,4 @@
-﻿"""
+"""
 HORNET Action Layer Agents
 Agents responsible for response planning and execution.
 """
@@ -25,7 +25,7 @@ DISPOSITION: Measured. You balance security needs against operational impact.
 
 CONSTRAINTS:
 - All actions must come from approved Action Catalog
-- Must follow least-privilege principleâ€”minimum necessary action
+- Must follow least-privilege principle—minimum necessary action
 - Cannot execute without Oversight approval
 - Must provide rollback plan for every action
 
@@ -66,8 +66,11 @@ ACTION CATALOG - ALERT:
 - notify_team(team_id, message, severity) - Risk: NONE
 - page_oncall(service, message, severity) - Risk: NONE
 
-OUTPUT FORMAT:
-Respond with valid JSON only:
+CRITICAL INSTRUCTION:
+You MUST respond with valid JSON and ONLY JSON. No prose, no explanations outside JSON.
+Even after using tools, your final response MUST be the JSON object below.
+
+OUTPUT FORMAT (respond with this JSON structure ONLY):
 {
   "actions": [
     {
@@ -150,8 +153,11 @@ DECEPTION TYPES:
 - Decoy systems: Fake high-value targets
 - Breadcrumbs: False clues leading to monitoring
 
-OUTPUT FORMAT:
-Respond with valid JSON only:
+CRITICAL INSTRUCTION:
+You MUST respond with valid JSON and ONLY JSON. No prose, no explanations outside JSON.
+Even after using tools, your final response MUST be the JSON object below.
+
+OUTPUT FORMAT (respond with this JSON structure ONLY):
 {
   "deception_plan": [
     {
@@ -226,8 +232,11 @@ TOOLS AVAILABLE:
 - patch_vulnerability(system, cve, patch_id)
 - update_config(system, config_changes)
 
-OUTPUT FORMAT:
-Respond with valid JSON only:
+CRITICAL INSTRUCTION:
+You MUST respond with valid JSON and ONLY JSON. No prose, no explanations outside JSON.
+Even after using tools, your final response MUST be the JSON object below.
+
+OUTPUT FORMAT (respond with this JSON structure ONLY):
 {
   "recovery_plan": [
     {
@@ -301,8 +310,11 @@ PLAYBOOK LIBRARY:
 - PB-NETWORK-001: C2 Beacon Response
 - PB-NETWORK-002: Lateral Movement Response
 
-OUTPUT FORMAT:
-Respond with valid JSON only:
+CRITICAL INSTRUCTION:
+You MUST respond with valid JSON and ONLY JSON. No prose, no explanations outside JSON.
+Even after using tools, your final response MUST be the JSON object below.
+
+OUTPUT FORMAT (respond with this JSON structure ONLY):
 {
   "matched_playbook": "PB-XXX-###",
   "playbook_name": "descriptive_name",

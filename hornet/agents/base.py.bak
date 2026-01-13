@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Base Agent
 Abstract base class with full tool calling support.
 """
