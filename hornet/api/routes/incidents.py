@@ -1,4 +1,4 @@
-﻿"""HORNET Incidents API"""
+"""HORNET Incidents API"""
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -28,7 +28,7 @@ async def list_incidents(
     """List incidents for tenant."""
     try:
         incidents = await incident_repo.list_incidents(
-            tenant_id=None,  # For now, list all
+            tenant_id=None,
             state=state,
             limit=limit,
             offset=offset,
@@ -41,6 +41,17 @@ async def list_incidents(
         return {"data": [], "meta": {"total": 0, "limit": limit, "offset": offset, "error": str(e)}}
 
 
+# IMPORTANT: Static routes MUST come before parameterized routes
+@router.get("/findings/recent")
+async def get_recent_findings(
+    limit: int = Query(10, le=50),
+    tenant: dict = Depends(get_current_tenant),
+):
+    """Get recent findings across all incidents."""
+    findings = await incident_repo.get_recent_findings(limit)
+    return findings
+
+
 @router.get("/{incident_id}")
 async def get_incident(
     incident_id: UUID,
@@ -50,7 +61,7 @@ async def get_incident(
     incident = await incident_repo.get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
-    
+
     findings = await incident_repo.get_findings(incident_id)
     incident["findings"] = findings
     return incident
@@ -68,6 +79,16 @@ async def get_incident_timeline(
     return {"timeline": [], "incident_id": str(incident_id)}
 
 
+@router.get("/{incident_id}/findings")
+async def get_incident_findings(
+    incident_id: UUID,
+    tenant: dict = Depends(get_current_tenant),
+):
+    """Get findings for a specific incident."""
+    findings = await incident_repo.get_findings(incident_id)
+    return findings
+
+
 @router.post("/{incident_id}/action")
 async def submit_action(
     incident_id: UUID,
@@ -78,7 +99,7 @@ async def submit_action(
     incident = await incident_repo.get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
-    
+
     return {
         "incident_id": str(incident_id),
         "action": action.response_type,

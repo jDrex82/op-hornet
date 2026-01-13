@@ -267,6 +267,26 @@ class EventBus:
         return info[0] if info else 0
 
 
+
+    # Pub/Sub channel for real-time dashboard updates
+    REALTIME_CHANNEL = "hornet:realtime"
+
+    async def publish_realtime(self, event_type: str, data: Dict[str, Any]):
+        """Publish real-time update for dashboard WebSockets."""
+        message = json.dumps({
+            "type": event_type,
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        await self._redis.publish(self.REALTIME_CHANNEL, message)
+        logger.debug("realtime_published", event_type=event_type)
+
+    async def subscribe_realtime(self):
+        """Subscribe to real-time updates channel."""
+        pubsub = self._redis.pubsub()
+        await pubsub.subscribe(self.REALTIME_CHANNEL)
+        return pubsub
+
 class RateLimiter:
     """Token bucket rate limiter using Redis."""
     

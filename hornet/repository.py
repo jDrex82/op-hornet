@@ -139,4 +139,18 @@ class IncidentRepository:
                 logger.error("get_findings_failed", error=str(e))
                 return []
 
+
+    async def get_recent_findings(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent findings across all incidents."""
+        async with async_session() as session:
+            try:
+                result = await session.execute(
+                    text("SELECT * FROM agent_findings ORDER BY created_at DESC LIMIT :limit"),
+                    {"limit": limit}
+                )
+                return [dict(row) for row in result.mappings().all()]
+            except Exception as e:
+                logger.error("get_recent_findings_failed", error=str(e))
+                return []
+
 incident_repo = IncidentRepository()

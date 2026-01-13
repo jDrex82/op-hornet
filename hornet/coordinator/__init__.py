@@ -153,6 +153,17 @@ class Coordinator:
         context.state = new_state
         context.add_timeline_event("state_transition", details={"from": old_state.value, "to": new_state.value})
         logger.info("state_transition", incident=str(context.incident_id), from_state=old_state.value, to_state=new_state.value)
+        # Publish real-time update for dashboard
+        try:
+            asyncio.create_task(self.event_bus.publish_realtime("incident_update", {
+                "incident_id": str(context.incident_id),
+                "state": new_state.value,
+                "previous_state": old_state.value,
+                "confidence": context.confidence,
+                "tokens_used": context.tokens_used
+            }))
+        except Exception as e:
+            logger.warning("realtime_publish_failed", error=str(e))
         # Persist state change
         try:
             import asyncio

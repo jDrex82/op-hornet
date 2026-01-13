@@ -1,3 +1,6 @@
+﻿import textwrap
+
+html = textwrap.dedent("""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -397,22 +400,22 @@ function viewIncident(id) {
     document.getElementById('incidentModal').classList.remove('hidden');
     document.getElementById('modalIncidentId').textContent = id;
     document.getElementById('modalContent').innerHTML = '<div class="text-gray-500">Loading...</div>';
-
+    
     Promise.all([
         fetch('/api/v1/incidents/' + id, {headers: {'X-API-Key': apiKey}}).then(function(r) { return r.json(); }),
         fetch('/api/v1/incidents/' + id + '/findings', {headers: {'X-API-Key': apiKey}}).then(function(r) { return r.json(); }).catch(function() { return []; })
     ]).then(function(results) {
         var inc = results[0];
         var findings = results[1];
-
+        
         var html = '<div class="grid grid-cols-2 gap-6">';
-
+        
         // Left column
         html += '<div>';
         html += '<div class="border-l-2 border-amber-500/30 pl-4 mb-6"><h4 class="text-xs text-gray-400 mb-2">STATUS</h4>';
         html += '<div class="flex space-x-2"><span class="badge px-2 py-1 rounded ' + getStateColor(inc.state) + '">' + inc.state + '</span>';
         html += '<span class="badge px-2 py-1 rounded ' + getSeverityColor(inc.severity) + '">' + inc.severity + '</span></div></div>';
-
+        
         html += '<div class="border-l-2 border-amber-500/30 pl-4 mb-6"><h4 class="text-xs text-gray-400 mb-2">METRICS</h4>';
         html += '<div class="grid grid-cols-2 gap-4 text-sm">';
         html += '<div><div class="text-gray-500 text-xs">Confidence</div><div class="mono text-lg">' + (inc.confidence * 100).toFixed(0) + '%</div></div>';
@@ -420,11 +423,11 @@ function viewIncident(id) {
         html += '<div><div class="text-gray-500 text-xs">Created</div><div class="mono text-sm">' + new Date(inc.created_at).toLocaleString() + '</div></div>';
         html += '<div><div class="text-gray-500 text-xs">Updated</div><div class="mono text-sm">' + new Date(inc.updated_at).toLocaleString() + '</div></div>';
         html += '</div></div>';
-
+        
         html += '<div class="border-l-2 border-amber-500/30 pl-4 mb-6"><h4 class="text-xs text-gray-400 mb-2">SUMMARY</h4>';
         html += '<div class="text-sm text-gray-300 bg-black/30 p-3 rounded">' + (inc.summary || 'No summary available') + '</div></div>';
         html += '</div>';
-
+        
         // Right column
         html += '<div>';
         html += '<div class="border-l-2 border-amber-500/30 pl-4 mb-6"><h4 class="text-xs text-gray-400 mb-2">AGENT FINDINGS</h4>';
@@ -443,11 +446,11 @@ function viewIncident(id) {
             html += '<div class="text-gray-600 text-sm">No findings recorded</div>';
         }
         html += '</div></div>';
-
+        
         html += '<div class="border-l-2 border-amber-500/30 pl-4"><h4 class="text-xs text-gray-400 mb-2">RAW DATA</h4>';
         html += '<pre class="text-xs bg-black/50 p-3 rounded overflow-x-auto max-h-40 text-gray-400 mono">' + JSON.stringify(inc, null, 2) + '</pre></div>';
         html += '</div>';
-
+        
         html += '</div>';
         document.getElementById('modalContent').innerHTML = html;
     }).catch(function(e) {
@@ -462,3 +465,8 @@ setInterval(function() { loadIncidents(); loadStats(); loadRequiresAttention(); 
 </script>
 </body>
 </html>
+""").strip()
+
+with open('/app/hornet/dashboard/index.html', 'w', encoding='utf-8') as f:
+    f.write(html)
+print('Full dashboard restored!')
