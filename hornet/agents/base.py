@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Base Agent
 Abstract base class with full tool calling support.
 """
@@ -30,16 +30,22 @@ settings = get_settings()
 @dataclass
 class AgentContext:
     """Context passed to agents during processing."""
-    incident_id: UUID
-    tenant_id: UUID
-    event_id: UUID
-    event_data: Dict[str, Any]
-    entities: List[Dict[str, Any]]
+    incident_id: UUID = None
+    tenant_id: UUID = None
+    event_id: UUID = None
+    event_data: Dict[str, Any] = field(default_factory=dict)
+    entities: List[Dict[str, Any]] = field(default_factory=list)
     prior_findings: List[Dict[str, Any]] = field(default_factory=list)
     enrichments: List[Dict[str, Any]] = field(default_factory=list)
     token_budget_remaining: int = 50000
     timestamp: datetime = field(default_factory=datetime.utcnow)
     tool_results: Dict[str, Any] = field(default_factory=dict)
+    # Aliases for coordinator compatibility
+    state: str = None
+    events: List[Dict[str, Any]] = field(default_factory=list)
+    findings: List[Dict[str, Any]] = field(default_factory=list)
+    token_budget: int = 50000
+    tokens_used: int = 0
 
 
 @dataclass
@@ -779,10 +785,18 @@ class ToolExecutor:
         
         try:
             result = await handler(**arguments)
-            if hasattr(result, '__dict__'):
-                return {"success": result.success, "data": result.data, "source": result.source, "error": result.error}
+            # Handle single ToolResult
+            if hasattr(result, 'success') and hasattr(result, 'data'):
+                return {"success": result.success, "data": result.data, "source": getattr(result, 'source', ''), "error": getattr(result, 'error', None)}
+            # Handle dict of ToolResults (e.g., from enrich_ip)
             elif isinstance(result, dict):
-                return result
+                converted = {}
+                for k, v in result.items():
+                    if hasattr(v, 'success') and hasattr(v, 'data'):
+                        converted[k] = {"success": v.success, "data": v.data, "source": getattr(v, 'source', ''), "error": getattr(v, 'error', None)}
+                    else:
+                        converted[k] = v
+                return {"success": True, "data": converted}
             else:
                 return {"success": True, "data": result}
         except Exception as e:
@@ -1172,3 +1186,7 @@ class DeceptionAgent(BaseAgent):
                 "reasoning": {"type": "string"}
             }
         }
+
+
+
+

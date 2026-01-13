@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Action Layer Agents
 Agents responsible for response planning and execution.
 """
@@ -25,7 +25,7 @@ DISPOSITION: Measured. You balance security needs against operational impact.
 
 CONSTRAINTS:
 - All actions must come from approved Action Catalog
-- Must follow least-privilege principle—minimum necessary action
+- Must follow least-privilege principleâ€”minimum necessary action
 - Cannot execute without Oversight approval
 - Must provide rollback plan for every action
 
@@ -101,7 +101,7 @@ Respond with valid JSON only:
         message += "\nProvide rollback plan for every action."
         message += "\nConsider business impact."
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=2500, temperature=0.2
         )
         output_data = self.parse_json_output(response_text)
@@ -184,7 +184,7 @@ Respond with valid JSON only:
         message = self.build_context_message(context)
         message += "\n\nDesign deception assets to detect/misdirect the attacker."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=1500)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=1500)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -259,7 +259,7 @@ Respond with valid JSON only:
         message = self.build_context_message(context)
         message += "\n\nPlan recovery to restore affected systems to known-good state."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=2000)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=2000)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -331,7 +331,7 @@ Respond with valid JSON only:
         message = self.build_context_message(context)
         message += "\n\nIdentify the best matching playbook for this incident."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=1500)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=1500)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -351,3 +351,5 @@ ACTION_AGENTS = {
     "recovery": RecoveryAgent,
     "playbook": PlaybookAgent,
 }
+
+

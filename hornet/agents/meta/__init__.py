@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Meta Layer Agents
 Agents responsible for swarm orchestration and infrastructure.
 """
@@ -139,7 +139,7 @@ Respond with valid JSON only:
         message += "\n\nClassify this event and determine which agents should handle it."
         message += f"\nAvailable domains: auth, network, endpoint, email, cloud, data"
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=1000, temperature=0.1
         )
         output_data = self.parse_json_output(response_text)
@@ -229,7 +229,7 @@ Respond with valid JSON only:
         message += "\n\nSearch for relevant historical context for this event."
         message += "\nLook for similar events, related incidents, and matching patterns."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=1500)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=1500)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -258,7 +258,7 @@ GOAL: Monitor agent health, coverage gaps, and system issues. Alert on degradati
 DISPOSITION: Vigilant. You watch for problems before they cause failures.
 
 CONSTRAINTS:
-- Cannot modify agent behavior—only report
+- Cannot modify agent behaviorâ€”only report
 - Must alert humans on critical health issues
 - Track token usage and budget burn rate
 
@@ -325,7 +325,7 @@ Respond with valid JSON only:
         message = self.build_context_message(context)
         message += "\n\nAssess the health of the swarm based on available metrics."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=1500)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=1500)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -344,3 +344,4 @@ META_AGENTS = {
     "memory": MemoryAgent,
     "health": HealthAgent,
 }
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Governance Layer Agents
 Agents responsible for ethical oversight and compliance.
 """
@@ -84,7 +84,7 @@ Respond with valid JSON only:
         message += "\nIf ANY mandatory trigger is met, you MUST veto that action."
         message += "\nExplain your reasoning thoroughly."
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=2500, temperature=0.1
         )
         output_data = self.parse_json_output(response_text)
@@ -115,7 +115,7 @@ GOAL: Check all findings and actions against relevant compliance frameworks.
 DISPOSITION: By-the-book. You ensure rules are followed.
 
 CONSTRAINTS:
-- Cannot veto—only flag concerns to Oversight
+- Cannot vetoâ€”only flag concerns to Oversight
 - Must cite specific regulation/framework for every flag
 - Must maintain awareness of tenant's applicable frameworks
 
@@ -176,7 +176,7 @@ Respond with valid JSON only:
         message += "\n\nCheck this incident and proposed actions against compliance frameworks."
         message += "\nIdentify any compliance issues or notification requirements."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=2000)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=2000)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -207,7 +207,7 @@ DISPOSITION: Cautious. Legal consequences are severe, so you err toward disclosu
 ACTIVATION: On-demand, when Oversight identifies potential legal implications.
 
 CONSTRAINTS:
-- Cannot provide legal advice—only flag obligations
+- Cannot provide legal adviceâ€”only flag obligations
 - Must escalate to human legal counsel for breach determinations
 - Must ensure evidence preservation before any destructive action
 
@@ -277,7 +277,7 @@ Respond with valid JSON only:
         message += "\nIdentify breach notification and evidence preservation requirements."
         message += "\nDetermine if legal counsel escalation is needed."
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=2000, temperature=0.1
         )
         output_data = self.parse_json_output(response_text)
@@ -298,3 +298,4 @@ GOVERNANCE_AGENTS = {
     "compliance": ComplianceAgent,
     "legal": LegalAgent,
 }
+

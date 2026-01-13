@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Configuration
 Central configuration management for the autonomous SOC swarm.
 """
@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "2.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
+    OTEL_ENABLED: bool = False
     
     # API Keys
     ANTHROPIC_API_KEY: str = Field(..., description="Claude API key")
@@ -243,3 +245,5 @@ MODEL_MAP = {
     "sonnet": "claude-sonnet-4-20250514",
     "opus": "claude-opus-4-20250514",
 }
+
+

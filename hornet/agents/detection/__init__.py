@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Detection Layer Agents
 Agents responsible for initial threat identification.
 """
@@ -72,7 +72,7 @@ DISPOSITION: Precise. You deal in facts about what exists and what is expected.
 CONSTRAINTS:
 - Only report deviations that exceed configured threshold (default: 2 standard deviations)
 - Must reference specific baseline data for every finding
-- Cannot modify baselines—only Tuner can do that
+- Cannot modify baselinesâ€”only Tuner can do that
 
 EXPERTISE:
 - Asset discovery and inventory
@@ -116,7 +116,7 @@ DISPOSITION: Pattern-focused. You see the world through behavioral baselines.
 
 CONSTRAINTS:
 - Must have at least 7 days of baseline data before flagging anomalies
-- Cannot access raw PII—only behavioral patterns
+- Cannot access raw PIIâ€”only behavioral patterns
 - Must distinguish between policy violation and security threat
 
 EXPERTISE:
@@ -208,8 +208,8 @@ GOAL: Detect malicious activity on endpoints through EDR-style telemetry analysi
 DISPOSITION: Detail-oriented. You track every process and file operation.
 
 CONSTRAINTS:
-- Cannot terminate processes—only recommend to Responder
-- Cannot access user files—only metadata and hashes
+- Cannot terminate processesâ€”only recommend to Responder
+- Cannot access user filesâ€”only metadata and hashes
 - Must correlate with known-good baselines from Sentinel
 
 EXPERTISE:
@@ -255,7 +255,7 @@ GOAL: Identify authentication anomalies, credential stuffing, brute force, and i
 DISPOSITION: Vigilant. Every authentication event is a potential breach attempt.
 
 CONSTRAINTS:
-- Cannot disable accounts directly—must recommend to Responder
+- Cannot disable accounts directlyâ€”must recommend to Responder
 - Must consider legitimate business scenarios (travel, new devices)
 - Rate limit your findings on high-volume auth events
 
@@ -302,7 +302,7 @@ GOAL: Detect data exfiltration attempts and sensitive data policy violations.
 DISPOSITION: Protective. Data is the crown jewel you must defend.
 
 CONSTRAINTS:
-- Cannot view actual data content—only metadata and patterns
+- Cannot view actual data contentâ€”only metadata and patterns
 - Must respect data classification levels
 - Distinguish between policy violation and active exfiltration
 
@@ -397,7 +397,7 @@ DISPOSITION: Cloud-native. You think in terms of APIs, IAM, and infrastructure-a
 
 CONSTRAINTS:
 - Must understand multi-cloud environments (AWS, Azure, GCP)
-- Cannot modify cloud resources—only detect and recommend
+- Cannot modify cloud resourcesâ€”only detect and recommend
 - Prioritize public exposure findings
 
 EXPERTISE:
@@ -443,7 +443,7 @@ GOAL: Detect DNS-based attacks including tunneling, DGA domains, and C2 communic
 DISPOSITION: Protocol-focused. DNS tells stories that other traffic hides.
 
 CONSTRAINTS:
-- Cannot block DNS directly—recommend to Responder
+- Cannot block DNS directlyâ€”recommend to Responder
 - Must consider legitimate CDN and cloud service domains
 - Flag but don't over-alert on known benign high-entropy domains
 
@@ -486,3 +486,4 @@ DETECTION_AGENTS = {
     "cloudwatch": CloudWatchAgent,
     "dns": DNSAgent,
 }
+

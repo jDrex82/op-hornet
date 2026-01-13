@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Intelligence Layer Agents
 Agents responsible for enrichment and correlation.
 """
@@ -27,7 +27,7 @@ CONSTRAINTS:
 - Only query approved intel sources (VirusTotal, AbuseIPDB, MISP, OTX)
 - Cache results to avoid redundant API calls
 - Clearly distinguish between confirmed intel and speculation
-- Cannot make threat determinations—only provide enrichment
+- Cannot make threat determinationsâ€”only provide enrichment
 
 TOOLS AVAILABLE:
 - query_virustotal(indicator, type)
@@ -82,7 +82,7 @@ Respond with valid JSON only:
         message += f"\n\n## Entities to Enrich\n{json.dumps(entities_to_enrich, indent=2)}"
         message += "\n\nProvide threat intelligence enrichment for these entities."
         
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -167,7 +167,7 @@ Respond with valid JSON only:
         message += "\n\nAnalyze this event for correlations with historical events."
         message += "\nLook for attack chains, campaigns, and related activity."
         
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -192,3 +192,4 @@ INTELLIGENCE_AGENTS = {
     "intel": IntelAgent,
     "correlator": CorrelatorAgent,
 }
+

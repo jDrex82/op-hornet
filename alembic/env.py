@@ -1,19 +1,24 @@
-from logging.config import fileConfig
+﻿from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
 from alembic import context
 import asyncio
+import os
 
 config = context.config
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from hornet.models.database import Base
 target_metadata = Base.metadata
 
+def get_url():
+    return os.getenv("DATABASE_URL", "postgresql+asyncpg://hornet:hornet@localhost:5432/hornet")
+
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True, dialect_opts={"paramstyle": "named"})
     with context.begin_transaction():
         context.run_migrations()
@@ -24,7 +29,7 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(config.get_section(config.config_ini_section, {}), prefix="sqlalchemy.", poolclass=pool.NullPool)
+    connectable = create_async_engine(get_url(), poolclass=pool.NullPool)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

@@ -58,3 +58,4 @@ httpx>=0.26.0
 black>=24.1.0
 ruff>=0.1.14
 mypy>=1.8.0
+opentelemetry-instrumentation-httpx>=0.44b0

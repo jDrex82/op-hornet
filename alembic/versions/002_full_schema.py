@@ -1,4 +1,4 @@
-"""Full schema with all tables and RLS
+﻿"""Full schema with all tables and RLS
 
 Revision ID: 002_full_schema
 Revises: 001_initial
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '002_full_schema'
-down_revision = '001_initial'
+down_revision = '001'
 branch_labels = None
 depends_on = None
 
@@ -217,3 +217,4 @@ def downgrade() -> None:
     op.drop_table('agent_findings')
     op.drop_table('incidents')
     op.drop_table('events')
+

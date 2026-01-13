@@ -1,4 +1,4 @@
-"""HORNET - Autonomous SOC Swarm Main Application"""
+﻿"""HORNET - Autonomous SOC Swarm Main Application"""
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import structlog
@@ -105,8 +105,11 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 
 # WebSocket endpoint
 @app.websocket("/api/v1/ws/{tenant_id}")
-async def websocket_route(websocket: WebSocket, tenant_id: str):
-    await websocket_endpoint(websocket, tenant_id)
+async def websocket_route(websocket: WebSocket, tenant_id: str, api_key: str = None):
+    # Get api_key from query params if not passed
+    if not api_key:
+        api_key = websocket.query_params.get("api_key")
+    await websocket_endpoint(websocket, tenant_id, api_key)
 
 
 # Metrics endpoint
@@ -142,3 +145,4 @@ async def replay_dlq_item(item_id: str, tenant: dict = Depends(get_current_tenan
     from hornet.retry_queue import retry_queue
     success = await retry_queue.replay_dlq_item(item_id)
     return {"success": success}
+

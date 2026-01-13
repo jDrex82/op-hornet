@@ -1,262 +1,115 @@
+﻿"""
+Observability module with optional instrumentation.
+Gracefully handles missing packages.
 """
-HORNET Observability
-OpenTelemetry tracing and structured logging configuration.
-"""
-import os
-import sys
 import logging
+import os
 from typing import Optional
-import structlog
+from contextlib import contextmanager
 
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.propagate import set_global_textmap
-from opentelemetry.propagators.b3 import B3MultiFormat
+logger = logging.getLogger(__name__)
 
+# Track what's available
+_tracer = None
+_metrics_enabled = False
 
-# ============================================================================
-# STRUCTURED LOGGING
-# ============================================================================
+def _try_import(module_name: str):
+    """Try to import a module, return None if not available."""
+    try:
+        import importlib
+        return importlib.import_module(module_name)
+    except ImportError:
+        logger.debug(f"Optional module {module_name} not available")
+        return None
 
-def configure_logging(
-    level: str = "INFO",
-    json_output: bool = True,
-    add_timestamp: bool = True,
-):
-    """Configure structured logging with structlog."""
+def init_observability(service_name: str = "hornet", **kwargs) -> None:
+    """Initialize observability - works even without OpenTelemetry."""
+    global _tracer, _metrics_enabled
     
-    # Shared processors for all loggers
-    shared_processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso") if add_timestamp else lambda *a, **k: a[2],
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.UnicodeDecoder(),
-    ]
+    otel_enabled = os.getenv("OTEL_ENABLED", "false").lower() == "true"
     
-    if json_output:
-        # JSON output for production
-        renderer = structlog.processors.JSONRenderer()
-    else:
-        # Pretty output for development
-        renderer = structlog.dev.ConsoleRenderer(colors=True)
+    if not otel_enabled:
+        logger.info("OpenTelemetry disabled (set OTEL_ENABLED=true to enable)")
+        return
     
-    structlog.configure(
-        processors=shared_processors + [
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
-        wrapper_class=structlog.stdlib.BoundLogger,
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=True,
-    )
-    
-    # Configure stdlib logging to use structlog
-    formatter = structlog.stdlib.ProcessorFormatter(
-        foreign_pre_chain=shared_processors,
-        processors=[
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            renderer,
-        ],
-    )
-    
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    
-    root_logger = logging.getLogger()
-    root_logger.handlers = [handler]
-    root_logger.setLevel(getattr(logging, level.upper()))
-    
-    # Quiet noisy loggers
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("httpcore").setLevel(logging.WARNING)
-    
-    return structlog.get_logger()
+    # Try to set up OpenTelemetry
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+        
+        resource = Resource.create({"service.name": service_name})
+        provider = TracerProvider(resource=resource)
+        
+        # Try OTLP exporter
+        otlp = _try_import("opentelemetry.exporter.otlp.proto.grpc.trace_exporter")
+        if otlp and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+            exporter = otlp.OTLPSpanExporter()
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+            logger.info("OTLP exporter configured")
+        
+        trace.set_tracer_provider(provider)
+        _tracer = trace.get_tracer(service_name)
+        logger.info("OpenTelemetry tracing initialized")
+        
+    except ImportError as e:
+        logger.warning(f"OpenTelemetry not fully available: {e}")
 
-
-def get_logger(name: str = None):
-    """Get a structured logger."""
-    return structlog.get_logger(name)
-
-
-# ============================================================================
-# OPENTELEMETRY TRACING
-# ============================================================================
-
-_tracer: Optional[trace.Tracer] = None
-
-
-def configure_tracing(
-    service_name: str = "hornet",
-    environment: str = "development",
-    otlp_endpoint: str = None,
-):
-    """Configure OpenTelemetry tracing."""
-    global _tracer
-    
-    # Create resource with service info
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.version": "2.0.0",
-        "deployment.environment": environment,
-    })
-    
-    # Create tracer provider
-    provider = TracerProvider(resource=resource)
-    
-    # Add exporters
-    if otlp_endpoint:
-        # OTLP exporter for production (Jaeger, Tempo, etc.)
+def instrument_app(app) -> None:
+    """Instrument FastAPI app - no-op if packages missing."""
+    if os.getenv("OTEL_ENABLED", "false").lower() != "true":
+        return
+        
+    # Try FastAPI instrumentation
+    fastapi_inst = _try_import("opentelemetry.instrumentation.fastapi")
+    if fastapi_inst:
         try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-            otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
-            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        except ImportError:
-            pass
+            fastapi_inst.FastAPIInstrumentor.instrument_app(app)
+            logger.info("FastAPI instrumented")
+        except Exception as e:
+            logger.debug(f"FastAPI instrumentation failed: {e}")
     
-    if environment == "development":
-        # Console exporter for development
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-    
-    # Set global tracer provider
-    trace.set_tracer_provider(provider)
-    
-    # Configure propagation (B3 for compatibility)
-    set_global_textmap(B3MultiFormat())
-    
-    # Get tracer
-    _tracer = trace.get_tracer(service_name)
-    
-    return _tracer
+    # Try other instrumentations
+    for name, instrumentor_class in [
+        ("opentelemetry.instrumentation.httpx", "HTTPXClientInstrumentor"),
+        ("opentelemetry.instrumentation.redis", "RedisInstrumentor"),
+        ("opentelemetry.instrumentation.sqlalchemy", "SQLAlchemyInstrumentor"),
+    ]:
+        mod = _try_import(name)
+        if mod and hasattr(mod, instrumentor_class):
+            try:
+                getattr(mod, instrumentor_class)().instrument()
+                logger.debug(f"{instrumentor_class} enabled")
+            except Exception as e:
+                logger.debug(f"{instrumentor_class} failed: {e}")
 
-
-def get_tracer() -> trace.Tracer:
-    """Get the configured tracer."""
+def get_tracer(name: str = "hornet"):
+    """Get a tracer, returns no-op if not available."""
     global _tracer
-    if _tracer is None:
-        _tracer = trace.get_tracer("hornet")
-    return _tracer
-
-
-def instrument_app(app):
-    """Instrument FastAPI app with OpenTelemetry."""
-    FastAPIInstrumentor.instrument_app(app)
-    HTTPXClientInstrumentor().instrument()
-    RedisInstrumentor().instrument()
-
-
-# ============================================================================
-# TRACE CONTEXT HELPERS
-# ============================================================================
-
-class TraceContext:
-    """Context manager for creating spans."""
+    if _tracer:
+        return _tracer
     
-    def __init__(self, name: str, attributes: dict = None):
-        self.name = name
-        self.attributes = attributes or {}
-        self.span = None
+    # Return a no-op tracer
+    class NoOpTracer:
+        @contextmanager
+        def start_as_current_span(self, name, **kwargs):
+            yield None
+        def start_span(self, name, **kwargs):
+            return NoOpSpan()
     
-    def __enter__(self):
-        tracer = get_tracer()
-        self.span = tracer.start_span(self.name)
-        for key, value in self.attributes.items():
-            self.span.set_attribute(key, value)
-        return self.span
+    class NoOpSpan:
+        def set_attribute(self, key, value): pass
+        def set_status(self, status): pass
+        def record_exception(self, exc): pass
+        def end(self): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_val:
-            self.span.record_exception(exc_val)
-            self.span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc_val)))
-        self.span.end()
-        return False
+    return NoOpTracer()
+
+# Convenience exports
+tracer = get_tracer()
 
 
-def trace_span(name: str, attributes: dict = None):
-    """Decorator to trace a function."""
-    def decorator(func):
-        async def async_wrapper(*args, **kwargs):
-            with TraceContext(name, attributes) as span:
-                span.set_attribute("function", func.__name__)
-                return await func(*args, **kwargs)
-        
-        def sync_wrapper(*args, **kwargs):
-            with TraceContext(name, attributes) as span:
-                span.set_attribute("function", func.__name__)
-                return func(*args, **kwargs)
-        
-        import asyncio
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-    return decorator
 
-
-# ============================================================================
-# AGENT TRACING
-# ============================================================================
-
-def trace_agent_call(agent_name: str, incident_id: str = None):
-    """Create a span for an agent call."""
-    tracer = get_tracer()
-    span = tracer.start_span(f"agent.{agent_name}")
-    span.set_attribute("agent.name", agent_name)
-    if incident_id:
-        span.set_attribute("incident.id", incident_id)
-    return span
-
-
-def trace_llm_call(model: str, tokens: int = 0):
-    """Create a span for an LLM call."""
-    tracer = get_tracer()
-    span = tracer.start_span("llm.call")
-    span.set_attribute("llm.model", model)
-    span.set_attribute("llm.tokens", tokens)
-    return span
-
-
-# ============================================================================
-# INITIALIZATION
-# ============================================================================
-
-def init_observability(
-    service_name: str = "hornet",
-    environment: str = None,
-    log_level: str = None,
-    otlp_endpoint: str = None,
-):
-    """Initialize all observability components."""
-    env = environment or os.getenv("ENVIRONMENT", "development")
-    level = log_level or os.getenv("LOG_LEVEL", "INFO")
-    endpoint = otlp_endpoint or os.getenv("OTLP_ENDPOINT")
-    
-    # Configure logging
-    logger = configure_logging(
-        level=level,
-        json_output=(env == "production"),
-    )
-    
-    # Configure tracing
-    configure_tracing(
-        service_name=service_name,
-        environment=env,
-        otlp_endpoint=endpoint,
-    )
-    
-    logger.info(
-        "observability_initialized",
-        service=service_name,
-        environment=env,
-        log_level=level,
-        tracing_enabled=bool(endpoint),
-    )
-    
-    return logger

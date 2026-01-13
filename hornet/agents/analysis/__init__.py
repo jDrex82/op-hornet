@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Analysis Layer Agents
 Agents responsible for threat validation and prioritization.
 """
@@ -69,7 +69,7 @@ Respond with valid JSON only:
         message += "\n3. What is the impact?"
         message += "\nBe skeptical. Require evidence. Explain your reasoning."
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=2500, temperature=0.2
         )
         output_data = self.parse_json_output(response_text)
@@ -105,7 +105,7 @@ CONSTRAINTS:
 - Must explain priority calculation
 
 PRIORITY FORMULA:
-priority_score = (confidence × 0.30) + (severity_weight × 0.25) + (impact × 0.25) + (recency × 0.20)
+priority_score = (confidence Ã— 0.30) + (severity_weight Ã— 0.25) + (impact Ã— 0.25) + (recency Ã— 0.20)
 
 SEVERITY WEIGHTS:
 - CRITICAL: 1.0
@@ -147,7 +147,7 @@ Respond with valid JSON only:
         message = self.build_context_message(context)
         message += "\n\nCalculate the priority score for this incident."
         
-        response_text, tokens_used = await self.call_llm(context, message, max_tokens=1000)
+        response_text, tokens_used, _ = await self.call_llm(context, message, max_tokens=1000)
         output_data = self.parse_json_output(response_text)
         
         return AgentOutput(
@@ -178,7 +178,7 @@ DISPOSITION: Meticulous. You document everything with chain of custody.
 ACTIVATION: On-demand only, requested by Analyst or Oversight.
 
 CONSTRAINTS:
-- Must preserve evidence integrity—no modifications
+- Must preserve evidence integrityâ€”no modifications
 - Must document chain of custody for all artifacts
 - Cannot access systems not in incident scope without approval
 
@@ -241,7 +241,7 @@ Respond with valid JSON only:
         message += "\nFocus on: memory, disk, network captures as appropriate."
         message += "\nDocument chain of custody for all artifacts."
         
-        response_text, tokens_used = await self.call_llm(
+        response_text, tokens_used, _ = await self.call_llm(
             context, message, max_tokens=3000, temperature=0.2
         )
         output_data = self.parse_json_output(response_text)
@@ -262,3 +262,4 @@ ANALYSIS_AGENTS = {
     "triage": TriageAgent,
     "forensics": ForensicsAgent,
 }
+
