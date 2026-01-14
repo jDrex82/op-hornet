@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://hornet_app:hornet_app_secure_change_me@postgres:5432/hornet
+      - DATABASE_URL=postgresql+asyncpg://hornet:hornet@postgres:5432/hornet
       - REDIS_URL=redis://redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -40,7 +40,7 @@ services:
     build: .
     command: python -m hornet.worker
     environment:
-      - DATABASE_URL=postgresql+asyncpg://hornet_app:hornet_app_secure_change_me@postgres:5432/hornet
+      - DATABASE_URL=postgresql+asyncpg://hornet:hornet@postgres:5432/hornet
       - REDIS_URL=redis://redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

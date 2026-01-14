@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Coordinator
 FSM-based incident coordination with agent orchestration.
 """
@@ -10,7 +10,6 @@ import asyncio
 from typing import Dict, Any, List, Optional, Set
 from uuid import UUID, uuid4
 from enum import Enum
-import asyncio
 import structlog
 
 from hornet.repository import incident_repo
@@ -166,7 +165,6 @@ class Coordinator:
             logger.warning("realtime_publish_failed", error=str(e))
         # Persist state change
         try:
-            import asyncio
             asyncio.create_task(incident_repo.update_incident(
                 incident_id=context.incident_id,
                 state=new_state.value,
