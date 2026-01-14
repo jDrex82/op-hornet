@@ -227,15 +227,55 @@ class Coordinator:
         else:
             self._transition_state(context, FSMState.ENRICHMENT)
     
+    def _build_agent_context(self, context: IncidentContext) -> AgentContext:
+        """Build AgentContext from IncidentContext."""
+        return AgentContext(
+            incident_id=context.incident_id,
+            tenant_id=context.tenant_id,
+            state=context.state,
+            event_data=context.events[0] if context.events else {},
+            events=context.events,
+            findings=context.findings,
+            entities=context.entities,
+            token_budget=context.token_budget,
+            tokens_used=context.tokens_used
+        )
+
     async def _run_enrichment(self, context: IncidentContext):
-        intel = self.agent_registry.get("intel")
-        if intel:
-            agent_context = AgentContext(incident_id=context.incident_id, tenant_id=context.tenant_id, state=context.state, event_data=context.events[0] if context.events else {}, events=context.events, findings=context.findings, entities=context.entities, token_budget=context.token_budget, tokens_used=context.tokens_used)
-            output = await intel.process(agent_context)
-            context.tokens_used += output.tokens_used
-            context.findings.append(output)
-            await incident_repo.add_finding(context.incident_id, output.agent_name, output.output_type, output.confidence, output.content, output.reasoning, severity="MEDIUM", tokens_consumed=output.tokens_used)
-            context.add_timeline_event("intel_enrichment", agent="intel")
+        """Run all activated agents for enrichment in parallel."""
+        squad = [name for name in context.activated_agents 
+                 if name not in ('router', 'analyst', 'responder', 'oversight') 
+                 and self.agent_registry.get(name)]
+        
+        if not squad:
+            squad = ['intel'] if self.agent_registry.get('intel') else []
+        
+        logger.info("enrichment_squad", agents=squad, incident=str(context.incident_id))
+        
+        tasks = []
+        for agent_name in squad:
+            agent = self.agent_registry.get(agent_name)
+            if agent:
+                tasks.append(agent.process(self._build_agent_context(context)))
+        
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for output in results:
+                if isinstance(output, Exception):
+                    logger.warning("agent_enrichment_failed", error=str(output))
+                    continue
+                context.tokens_used += output.tokens_used
+                context.findings.append(output)
+                try:
+                    await incident_repo.add_finding(
+                        context.incident_id, output.agent_name, output.output_type,
+                        output.confidence, output.content, output.reasoning,
+                        severity="MEDIUM", tokens_consumed=output.tokens_used
+                    )
+                except Exception as e:
+                    logger.error("finding_persist_failed", agent=output.agent_name, error=str(e))
+        
+        context.add_timeline_event("enrichment_complete", details={"agents": squad})
         self._transition_state(context, FSMState.ANALYSIS)
     
     async def _run_analysis(self, context: IncidentContext):

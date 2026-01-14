@@ -118,6 +118,40 @@ Respond with valid JSON only:
         
         return None
     
+
+    def _add_specialists(self, event_type: str, event_data: dict, agents: list) -> list:
+        """Add specialist agents based on event keywords."""
+        et_lower = event_type.lower()
+        data_str = str(event_data).lower()
+        
+        specialist_map = {
+            "dns": ["dns"],
+            "container": ["container"],
+            "k8s": ["container"],
+            "iam": ["cloudwatch", "gatekeeper"],
+            "cloud": ["cloudwatch"],
+            "phish": ["phisherman"],
+            "email": ["phisherman"],
+            "lateral": ["netwatch", "hunter"],
+            "exfil": ["dataguard", "netwatch"],
+            "ransom": ["endpoint", "backup"],
+            "malware": ["endpoint", "sandbox"],
+            "c2": ["netwatch", "hunter", "intel"],
+            "beacon": ["netwatch", "hunter"],
+            "brute": ["gatekeeper"],
+            "credential": ["gatekeeper", "hunter"],
+            "privilege": ["gatekeeper", "compliance"],
+        }
+        
+        for keyword, specialists in specialist_map.items():
+            if keyword in et_lower or keyword in data_str:
+                agents.extend(specialists)
+        
+        if "intel" not in agents:
+            agents.append("intel")
+        
+        return list(dict.fromkeys(agents))[:12]
+
     async def process(self, context: AgentContext) -> AgentOutput:
         """Classify event and determine agent activation."""
         event_type = context.event_data.get("event_type", "unknown")
@@ -125,6 +159,9 @@ Respond with valid JSON only:
         # Try Stage 1 first
         stage1_result = self.stage1_classify(event_type)
         if stage1_result and stage1_result["classification"]["confidence"] >= 0.7:
+            # Add specialist agents based on keywords
+            agents = self._add_specialists(event_type, context.event_data, stage1_result["activated_agents"])
+            stage1_result["activated_agents"] = agents
             return AgentOutput(
                 agent_name=self.name,
                 output_type="ROUTING",

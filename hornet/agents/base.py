@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Base Agent
 Abstract base class with full tool calling support.
 """
@@ -960,21 +960,47 @@ class BaseAgent(ABC):
         return "", total_tokens, tool_calls_made
     
     def parse_json_output(self, text: str) -> Dict[str, Any]:
-        """Parse JSON from LLM output."""
+        """Parse JSON from LLM output with robust extraction."""
+        import re
+        
+        if not text or not text.strip():
+            raise ValueError("Empty response from LLM")
+        
+        # Try markdown code block first
         if "```json" in text:
             start = text.find("```json") + 7
             end = text.find("```", start)
-            text = text[start:end].strip()
+            if end > start:
+                text = text[start:end].strip()
         elif "```" in text:
             start = text.find("```") + 3
             end = text.find("```", start)
-            text = text[start:end].strip()
+            if end > start:
+                text = text[start:end].strip()
         
+        # Try direct parse first
         try:
             return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        
+        # Fallback: extract first JSON object using balanced braces
+        try:
+            start_idx = text.find('{')
+            if start_idx >= 0:
+                depth = 0
+                for i, c in enumerate(text[start_idx:], start_idx):
+                    if c == '{':
+                        depth += 1
+                    elif c == '}':
+                        depth -= 1
+                        if depth == 0:
+                            return json.loads(text[start_idx:i+1])
         except json.JSONDecodeError as e:
             logger.error("json_parse_failed", agent=self.name, error=str(e))
             raise ValueError(f"Failed to parse JSON: {e}")
+        
+        raise ValueError(f"No valid JSON found in response")
     
     def validate_output(self, output: Dict[str, Any]) -> bool:
         """Validate output against schema."""
