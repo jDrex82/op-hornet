@@ -107,7 +107,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze this sample through dynamic execution. Report all observed behaviors."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
         max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
@@ -221,7 +221,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze this visual content for threats, phishing, or brand impersonation."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
         max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
@@ -330,7 +330,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nSimulate adversary techniques and validate detection coverage for this incident."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name,
@@ -444,7 +444,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nSearch dark web sources for relevant threats, leaked credentials, or mentions."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
         max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
@@ -668,7 +668,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze detection performance and recommend threshold adjustments."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name,

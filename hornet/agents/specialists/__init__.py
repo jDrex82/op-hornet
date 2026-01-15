@@ -55,7 +55,7 @@ OUTPUT FORMAT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze this sample for malicious behavior."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
@@ -142,7 +142,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nSimulate adversary techniques to validate detection."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="SIMULATION", content=output_data,
@@ -193,7 +193,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze visual content for threats."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
@@ -293,7 +293,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nVerify backup integrity and recovery options."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="BACKUP_STATUS", content=output_data,
@@ -420,7 +420,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nSearch dark web for relevant threats."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
@@ -556,7 +556,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nAnalyze detection performance and recommend tuning."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="TUNING", content=output_data,
@@ -605,7 +605,7 @@ OUTPUT:
     async def process(self, context: AgentContext) -> AgentOutput:
         message = self.build_context_message(context)
         message += "\n\nGenerate a test scenario."
-        response_text, tokens_used = await self.call_llm(context, message)
+        response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="SCENARIO", content=output_data,

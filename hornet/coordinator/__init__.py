@@ -144,7 +144,7 @@ class Coordinator:
         valid = VALID_TRANSITIONS.get(context.state, set())
         return new_state in valid
     
-    def _transition_state(self, context: IncidentContext, new_state: FSMState):
+    async def _transition_state(self, context: IncidentContext, new_state: FSMState):
         if not self._can_transition(context, new_state):
             logger.warning("invalid_transition", current=context.state.value, target=new_state.value)
             return False
@@ -165,13 +165,13 @@ class Coordinator:
             logger.warning("realtime_publish_failed", error=str(e))
         # Persist state change
         try:
-            asyncio.create_task(incident_repo.update_incident(
+            await incident_repo.update_incident(
                 incident_id=context.incident_id,
                 state=new_state.value,
                 confidence=context.confidence,
                 tokens_used=context.tokens_used,
                 summary=context.verdict.get("summary") if context.verdict else None,
-            ))
+            )
         except Exception as e:
             logger.error("state_persist_failed", error=str(e))
         return True
@@ -191,7 +191,7 @@ class Coordinator:
             while context.state not in {FSMState.CLOSED, FSMState.ERROR, FSMState.ESCALATED}:
                 budget_status = self._check_token_budget(context)
                 if budget_status == "CRITICAL":
-                    self._transition_state(context, FSMState.CLOSED)
+                    await self._transition_state(context, FSMState.CLOSED)
                     context.add_timeline_event("budget_exhausted")
                     break
                 
@@ -210,7 +210,7 @@ class Coordinator:
                     break
         except Exception as e:
             logger.error("incident_processing_error", incident=str(context.incident_id), error=str(e))
-            self._transition_state(context, FSMState.ERROR)
+            await self._transition_state(context, FSMState.ERROR)
     
     async def _run_detection(self, context: IncidentContext):
         router = self.agent_registry.get("router")
@@ -223,9 +223,9 @@ class Coordinator:
             context.add_timeline_event("router_activated", agent="router", details={"agents": list(context.activated_agents)})
         logger.info("detection_complete", confidence=context.confidence, threshold=settings.THRESHOLD_DISMISS, activated_agents=list(context.activated_agents))
         if context.confidence < settings.THRESHOLD_DISMISS:
-            self._transition_state(context, FSMState.CLOSED)
+            await self._transition_state(context, FSMState.CLOSED)
         else:
-            self._transition_state(context, FSMState.ENRICHMENT)
+            await self._transition_state(context, FSMState.ENRICHMENT)
     
     def _build_agent_context(self, context: IncidentContext) -> AgentContext:
         """Build AgentContext from IncidentContext."""
@@ -276,7 +276,7 @@ class Coordinator:
                     logger.error("finding_persist_failed", agent=output.agent_name, error=str(e))
         
         context.add_timeline_event("enrichment_complete", details={"agents": squad})
-        self._transition_state(context, FSMState.ANALYSIS)
+        await self._transition_state(context, FSMState.ANALYSIS)
     
     async def _run_analysis(self, context: IncidentContext):
         analyst = self.agent_registry.get("analyst")
@@ -290,9 +290,9 @@ class Coordinator:
             context.confidence = output.confidence
             context.add_timeline_event("analyst_verdict", agent="analyst", details={"verdict": output.content.get("verdict")})
         if context.confidence < settings.THRESHOLD_INVESTIGATE:
-            self._transition_state(context, FSMState.CLOSED)
+            await self._transition_state(context, FSMState.CLOSED)
         else:
-            self._transition_state(context, FSMState.PROPOSAL)
+            await self._transition_state(context, FSMState.PROPOSAL)
     
     async def _run_proposal(self, context: IncidentContext):
         responder = self.agent_registry.get("responder")
@@ -302,7 +302,7 @@ class Coordinator:
             context.tokens_used += output.tokens_used
             context.proposal = output.content
             context.add_timeline_event("proposal_generated", agent="responder")
-        self._transition_state(context, FSMState.OVERSIGHT)
+        await self._transition_state(context, FSMState.OVERSIGHT)
     
     async def _run_oversight(self, context: IncidentContext):
         oversight = self.agent_registry.get("oversight")
@@ -313,18 +313,18 @@ class Coordinator:
             decision = output.content.get("decision", "APPROVE")
             if decision == "VETO":
                 context.escalation_reason = output.content.get("veto_reason", "Governance veto")
-                self._transition_state(context, FSMState.ESCALATED)
+                await self._transition_state(context, FSMState.ESCALATED)
             elif decision == "ESCALATE":
                 context.escalation_reason = output.content.get("escalation_reason", "Requires human review")
-                self._transition_state(context, FSMState.ESCALATED)
+                await self._transition_state(context, FSMState.ESCALATED)
             else:
-                self._transition_state(context, FSMState.EXECUTION)
+                await self._transition_state(context, FSMState.EXECUTION)
     
     async def _run_execution(self, context: IncidentContext):
         context.add_timeline_event("execution_started")
         # Would execute actions here
         context.add_timeline_event("execution_completed")
-        self._transition_state(context, FSMState.CLOSED)
+        await self._transition_state(context, FSMState.CLOSED)
     
     def get_incident(self, incident_id: UUID) -> Optional[IncidentContext]:
         return self._active_incidents.get(incident_id)

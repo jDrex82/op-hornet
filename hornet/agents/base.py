@@ -966,6 +966,9 @@ class BaseAgent(ABC):
         if not text or not text.strip():
             raise ValueError("Empty response from LLM")
         
+        # Sanitize control characters that break JSON parsing
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+        
         # Try markdown code block first
         if "```json" in text:
             start = text.find("```json") + 7
