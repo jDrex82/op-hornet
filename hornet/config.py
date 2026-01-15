@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 1536
     
     # Token Budget
-    TOKEN_BUDGET_PER_INCIDENT: int = 50000
+    TOKEN_BUDGET_PER_INCIDENT: int = 200000
     TOKEN_WARNING_THRESHOLD: float = 0.80
     TOKEN_CRITICAL_THRESHOLD: float = 0.90
     TOKEN_FORCE_THRESHOLD: float = 0.95

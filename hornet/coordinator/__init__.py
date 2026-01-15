@@ -72,7 +72,7 @@ class IncidentContext:
     entities: Dict[str, Set[str]] = field(default_factory=dict)
     mitre_techniques: Set[str] = field(default_factory=set)
     tokens_used: int = 0
-    token_budget: int = 50000
+    token_budget: int = 200000
     activated_agents: Set[str] = field(default_factory=set)
     verdict: Dict[str, Any] = None
     proposal: Dict[str, Any] = None
@@ -176,6 +176,48 @@ class Coordinator:
             logger.error("state_persist_failed", error=str(e))
         return True
     
+
+    async def _generate_summary(self, context: IncidentContext):
+        """Generate executive summary from all findings."""
+        if not context.findings:
+            context.summary = "No findings to summarize."
+            return
+        
+        findings_text = "\n".join([
+            f"- {f.agent_name} ({f.confidence:.0%}): {f.reasoning[:200]}" 
+            for f in context.findings if f.reasoning
+        ][:10])  # Limit to top 10 findings
+        
+        event_type = context.events[0].get('event_type', 'Unknown') if context.events else 'Unknown'
+        severity = context.events[0].get('severity', 'Unknown') if context.events else 'Unknown'
+        
+        prompt = f"""Summarize this security incident in 2-3 sentences for an executive briefing.
+Focus on: What happened, what was the risk, what action was taken.
+Be specific but concise. No technical jargon.
+
+Incident: {event_type} - Severity: {severity}
+
+Agent Findings:
+{findings_text}
+
+Executive Summary:"""
+        
+        try:
+            from anthropic import AsyncAnthropic
+            client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+            response = await client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=150,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            context.summary = response.content[0].text.strip()
+            logger.info("summary_generated", incident=str(context.incident_id), summary_length=len(context.summary))
+        except Exception as e:
+            logger.warning("summary_generation_failed", error=str(e))
+            context.summary = f"{event_type} detected. {len(context.findings)} agents analyzed. Verdict: {context.confidence:.0%} confidence."
+
+
     def _check_token_budget(self, context: IncidentContext) -> str:
         pct = context.tokens_used / context.token_budget
         if pct >= 0.95:
@@ -200,6 +242,7 @@ class Coordinator:
                 elif context.state == FSMState.ENRICHMENT:
                     await self._run_enrichment(context)
                 elif context.state == FSMState.ANALYSIS:
+                    print(f"LOOP CALLING ANALYSIS: {context.incident_id}", flush=True)
                     await self._run_analysis(context)
                 elif context.state == FSMState.PROPOSAL:
                     await self._run_proposal(context)
@@ -279,8 +322,13 @@ class Coordinator:
         await self._transition_state(context, FSMState.ANALYSIS)
     
     async def _run_analysis(self, context: IncidentContext):
+        import sys
+        print(f"ANALYSIS ENTRY: {context.incident_id}", flush=True)
+        sys.stdout.flush()
+        logger.info("analysis_starting", incident=str(context.incident_id), current_confidence=context.confidence)
         analyst = self.agent_registry.get("analyst")
         if analyst:
+            logger.info("analyst_found", incident=str(context.incident_id))
             agent_context = AgentContext(incident_id=context.incident_id, tenant_id=context.tenant_id, state=context.state, event_data=context.events[0] if context.events else {}, events=context.events, findings=context.findings, entities=context.entities, token_budget=context.token_budget, tokens_used=context.tokens_used)
             output = await analyst.process(agent_context)
             context.tokens_used += output.tokens_used
@@ -290,6 +338,7 @@ class Coordinator:
             context.confidence = output.confidence
             context.add_timeline_event("analyst_verdict", agent="analyst", details={"verdict": output.content.get("verdict")})
         if context.confidence < settings.THRESHOLD_INVESTIGATE:
+            await self._generate_summary(context)
             await self._transition_state(context, FSMState.CLOSED)
         else:
             await self._transition_state(context, FSMState.PROPOSAL)
@@ -324,6 +373,7 @@ class Coordinator:
         context.add_timeline_event("execution_started")
         # Would execute actions here
         context.add_timeline_event("execution_completed")
+        await self._generate_summary(context)
         await self._transition_state(context, FSMState.CLOSED)
     
     def get_incident(self, incident_id: UUID) -> Optional[IncidentContext]:

@@ -967,7 +967,8 @@ class BaseAgent(ABC):
             raise ValueError("Empty response from LLM")
         
         # Sanitize control characters that break JSON parsing
-        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+        # Remove all control characters except tab, newline, carriage return
+        text = ''.join(char for char in text if ord(char) >= 32 or char in '\t\n\r')
         
         # Try markdown code block first
         if "```json" in text:
