@@ -59,7 +59,7 @@ OUTPUT FORMAT:
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
-            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0),
+            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0.15),
             reasoning=output_data.get("reasoning", ""), tokens_used=tokens_used,
         )
 
@@ -197,7 +197,7 @@ OUTPUT:
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
-            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0),
+            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0.15),
             reasoning=output_data.get("reasoning", ""), tokens_used=tokens_used,
         )
 
@@ -424,7 +424,7 @@ OUTPUT:
         output_data = self.parse_json_output(response_text)
         return AgentOutput(
             agent_name=self.name, output_type="FINDING", content=output_data,
-            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0),
+            confidence=max((f.get("confidence", 0) for f in output_data.get("findings", [])), default=0.15),
             reasoning=output_data.get("reasoning", ""), tokens_used=tokens_used,
         )
 

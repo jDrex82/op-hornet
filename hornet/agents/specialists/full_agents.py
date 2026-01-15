@@ -110,7 +110,7 @@ OUTPUT FORMAT:
         response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
-        max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
+        max_confidence = max((f.get("confidence", 0) for f in findings), default=0.15)
         return AgentOutput(
             agent_name=self.name,
             output_type="FINDING",
@@ -224,7 +224,7 @@ OUTPUT FORMAT:
         response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
-        max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
+        max_confidence = max((f.get("confidence", 0) for f in findings), default=0.15)
         return AgentOutput(
             agent_name=self.name,
             output_type="FINDING",
@@ -447,7 +447,7 @@ OUTPUT FORMAT:
         response_text, tokens_used, _ = await self.call_llm(context, message)
         output_data = self.parse_json_output(response_text)
         findings = output_data.get("findings", [])
-        max_confidence = max((f.get("confidence", 0) for f in findings), default=0)
+        max_confidence = max((f.get("confidence", 0) for f in findings), default=0.15)
         return AgentOutput(
             agent_name=self.name,
             output_type="FINDING",

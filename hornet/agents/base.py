@@ -1100,8 +1100,10 @@ class DetectionAgent(BaseAgent):
     
     def _aggregate_confidence(self, findings: List[Dict]) -> float:
         if not findings:
-            return 0.0
-        return max(f.get("confidence", 0.0) for f in findings)
+            return 0.15  # 15% = investigated but found nothing
+        # Default to 0.5 if finding doesn't specify confidence (LLM didn't include it)
+        confidences = [f.get("confidence", 0.5) for f in findings]
+        return max(0.15, max(confidences))  # Minimum 15% if we produced findings
 
 
 class IntelligenceAgent(BaseAgent):

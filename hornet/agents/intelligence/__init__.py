@@ -97,9 +97,9 @@ Respond with valid JSON only:
     def _calculate_enrichment_confidence(self, enrichments: List[Dict]) -> float:
         """Calculate overall enrichment confidence."""
         if not enrichments:
-            return 0.0
+            return 0.1  # 10% = "investigated but found nothing" vs 0% = "couldn't investigate"
         scores = [e.get("confidence", 0.5) * e.get("relevance", 0.5) for e in enrichments]
-        return sum(scores) / len(scores)
+        return max(0.1, sum(scores) / len(scores))  # Minimum 10% if we tried
 
 
 class CorrelatorAgent(IntelligenceAgent):
@@ -183,8 +183,8 @@ Respond with valid JSON only:
         """Calculate correlation confidence."""
         enrichments = output.get("enrichments", [])
         if not enrichments:
-            return 0.0
-        return max(e.get("confidence", 0.0) for e in enrichments)
+            return 0.1  # 10% = searched but found no correlations
+        return max(0.1, max(e.get("confidence", 0.0) for e in enrichments))
 
 
 # Export all intelligence agents

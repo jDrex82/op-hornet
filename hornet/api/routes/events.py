@@ -23,6 +23,54 @@ class EntityModel(BaseModel):
     type: str
     value: str
 
+
+import re
+from typing import List, Dict
+
+def extract_entities_from_data(data: dict) -> List[Dict]:
+    """Auto-extract entities (IPs, domains, hashes) from event data."""
+    entities = []
+    data_str = str(data).lower()
+    
+    # IP addresses (IPv4)
+    ip_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+    for ip in set(re.findall(ip_pattern, str(data))):
+        if not ip.startswith(('0.', '127.', '255.')):  # Skip invalid/localhost
+            entities.append({"type": "ip", "value": ip})
+    
+    # MD5 hashes
+    md5_pattern = r'\b[a-fA-F0-9]{32}\b'
+    for h in set(re.findall(md5_pattern, str(data))):
+        entities.append({"type": "hash", "value": h, "hash_type": "md5"})
+    
+    # SHA256 hashes
+    sha256_pattern = r'\b[a-fA-F0-9]{64}\b'
+    for h in set(re.findall(sha256_pattern, str(data))):
+        entities.append({"type": "hash", "value": h, "hash_type": "sha256"})
+    
+    # Domains (basic pattern)
+    domain_pattern = r'\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+(?:com|net|org|io|edu|gov|co|info|biz|ru|cn|uk)\b'
+    for d in set(re.findall(domain_pattern, str(data))):
+        if d not in ('example.com', 'test.com'):
+            entities.append({"type": "domain", "value": d})
+    
+    # Email addresses
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    for e in set(re.findall(email_pattern, str(data))):
+        entities.append({"type": "email", "value": e})
+    
+    # Hostnames from common keys
+    for key in ['hostname', 'host', 'computer_name', 'machine', 'device']:
+        if key in data and isinstance(data[key], str):
+            entities.append({"type": "hostname", "value": data[key]})
+    
+    # Users from common keys
+    for key in ['user', 'username', 'user_id', 'account', 'actor']:
+        if key in data and isinstance(data[key], str):
+            entities.append({"type": "user", "value": data[key]})
+    
+    return entities
+
 class EventCreate(BaseModel):
     event_type: str = Field(..., description="Event type identifier")
     source: str = Field(..., description="Source system")
@@ -58,7 +106,7 @@ async def ingest_event(
         "source_type": event.source_type,
         "severity": event.severity,
         "timestamp": event.timestamp.isoformat(),
-        "entities": [e.dict() for e in event.entities],
+        "entities": [e.dict() for e in event.entities] or extract_entities_from_data(event.data),
         "data": event.data,
         "tenant_id": tenant["tenant_id"],
         "incident_id": str(incident_id),
@@ -100,7 +148,7 @@ async def ingest_batch(
             "source_type": event.source_type,
             "severity": event.severity,
             "timestamp": event.timestamp.isoformat(),
-            "entities": [e.dict() for e in event.entities],
+            "entities": [e.dict() for e in event.entities] or extract_entities_from_data(event.data),
             "data": event.data,
             "tenant_id": tenant["tenant_id"],
             "incident_id": str(incident_id),
