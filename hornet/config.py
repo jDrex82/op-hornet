@@ -111,10 +111,31 @@ class Settings(BaseSettings):
     ANOMALY_Z_SCORE_THRESHOLD: float = 2.0
     
     # External Services (optional)
+    # Threat Intelligence APIs
     VIRUSTOTAL_API_KEY: Optional[str] = None
     ABUSEIPDB_API_KEY: Optional[str] = None
+    SHODAN_API_KEY: Optional[str] = None
+    GREYNOISE_API_KEY: Optional[str] = None
+    OTX_API_KEY: Optional[str] = None
+    SLACK_WEBHOOK_URL: Optional[str] = None
+    SHODAN_API_KEY: Optional[str] = None
+    GREYNOISE_API_KEY: Optional[str] = None
+    OTX_API_KEY: Optional[str] = None
     MISP_URL: Optional[str] = None
     MISP_API_KEY: Optional[str] = None
+    
+    # Cloud Providers
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AZURE_TENANT_ID: Optional[str] = None
+    AZURE_CLIENT_ID: Optional[str] = None
+    AZURE_CLIENT_SECRET: Optional[str] = None
+    
+    # EDR/SIEM
+    CROWDSTRIKE_CLIENT_ID: Optional[str] = None
+    CROWDSTRIKE_CLIENT_SECRET: Optional[str] = None
+    SPLUNK_HEC_TOKEN: Optional[str] = None
+    ELASTIC_API_KEY: Optional[str] = None
     
     # Notifications
     SLACK_BOT_TOKEN: Optional[str] = None
