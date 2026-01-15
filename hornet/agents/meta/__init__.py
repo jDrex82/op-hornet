@@ -45,18 +45,21 @@ EVENT DOMAINS:
 - cloud: Cloud infrastructure events
 - data: Data protection events
 
-OUTPUT FORMAT:
-Respond with valid JSON only:
-{
-  "classification": {
-    "domain": "auth|network|endpoint|email|cloud|data",
-    "sub_type": "specific_event_type",
-    "confidence": 0.0-1.0
-  },
-  "activated_agents": ["agent1", "agent2"],
-  "stage_used": 1|2,
-  "reasoning": "Brief classification explanation"
-}"""
+VALID AGENTS (only use these exact names):
+  Detection: hunter, sentinel, behavioral, netwatch, endpoint, gatekeeper, dataguard, phisherman, cloudwatch, dns
+  Intelligence: intel, correlator
+  Analysis: analyst, triage, forensics
+  Specialists: sandbox, scanner, redsim, vision, social, change, backup, uptime, api, container, darkweb, physical, supply, surface, tuner, synth, mobile, ot, bot, brand, fraud, identity, vuln, waf, secret, crypto, emailgateway, retro, simulator, complianceaudit, recovery
+  Governance: oversight, compliance, legal
+  Action: responder, deceiver, playbook
+
+  OUTPUT FORMAT (use ONLY agent names from list above):
+  {
+    "classification": {"domain": "auth|network|endpoint|email|cloud|data", "sub_type": "string", "confidence": 0.0-1.0},
+    "activated_agents": ["hunter", "intel", "etc"],
+    "stage_used": 2,
+    "reasoning": "Brief explanation"
+  }"""
     
     def get_output_schema(self) -> Dict[str, Any]:
         return {
@@ -125,22 +128,123 @@ Respond with valid JSON only:
         data_str = str(event_data).lower()
         
         specialist_map = {
-            "dns": ["dns"],
-            "container": ["container"],
-            "k8s": ["container"],
-            "iam": ["cloudwatch", "gatekeeper"],
-            "cloud": ["cloudwatch"],
-            "phish": ["phisherman"],
-            "email": ["phisherman"],
-            "lateral": ["netwatch", "hunter"],
-            "exfil": ["dataguard", "netwatch"],
-            "ransom": ["endpoint", "backup"],
-            "malware": ["endpoint", "sandbox"],
-            "c2": ["netwatch", "hunter", "intel"],
-            "beacon": ["netwatch", "hunter"],
-            "brute": ["gatekeeper"],
-            "credential": ["gatekeeper", "hunter"],
-            "privilege": ["gatekeeper", "compliance"],
+            # Network threats
+            "dns": ["dns", "netwatch"],
+            "c2": ["netwatch", "hunter", "intel", "redsim"],
+            "beacon": ["netwatch", "hunter", "redsim"],
+            "lateral": ["netwatch", "hunter", "correlator"],
+            "exfil": ["dataguard", "netwatch", "encryption"],
+            "tunnel": ["dns", "netwatch"],
+            "scan": ["scanner", "surface", "netwatch"],
+            "ddos": ["uptime", "netwatch", "waf"],
+            "firewall": ["netwatch", "change"],
+            # Endpoint threats
+            "malware": ["endpoint", "sandbox", "hunter", "forensics"],
+            "ransom": ["endpoint", "backup", "recovery", "forensics"],
+            "process": ["endpoint", "hunter", "behavioral"],
+            "injection": ["endpoint", "redsim", "forensics"],
+            "persistence": ["endpoint", "hunter", "forensics"],
+            "script": ["endpoint", "sandbox"],
+            "driver": ["endpoint", "change"],
+            "memory": ["endpoint", "forensics", "redsim"],
+            # Identity/Auth
+            "brute": ["gatekeeper", "behavioral", "correlator"],
+            "credential": ["gatekeeper", "hunter", "darkweb"],
+            "privilege": ["gatekeeper", "compliance", "oversight"],
+            "login": ["gatekeeper", "behavioral", "identity"],
+            "mfa": ["gatekeeper", "compliance"],
+            "password": ["gatekeeper", "identity"],
+            "session": ["gatekeeper", "behavioral"],
+            "impossible": ["gatekeeper", "behavioral", "fraud"],
+            "account": ["gatekeeper", "identity", "compliance"],
+            # Cloud/Container
+            "container": ["container", "cloudwatch"],
+            "k8s": ["container", "cloudwatch"],
+            "kubernetes": ["container", "cloudwatch"],
+            "pod": ["container"],
+            "docker": ["container"],
+            "iam": ["cloudwatch", "gatekeeper", "compliance"],
+            "cloud": ["cloudwatch", "change"],
+            "aws": ["cloudwatch", "secret"],
+            "azure": ["cloudwatch", "identity"],
+            "gcp": ["cloudwatch"],
+            "s3": ["cloudwatch", "dataguard"],
+            "storage": ["cloudwatch", "dataguard"],
+            "api": ["api", "waf"],
+            "serverless": ["cloudwatch", "api"],
+            "config": ["change", "compliance"],
+            # Email/Phishing
+            "phish": ["phisherman", "vision", "social"],
+            "email": ["phisherman", "emailgateway"],
+            "bec": ["phisherman", "behavioral", "fraud"],
+            "spam": ["phisherman", "emailgateway"],
+            "attachment": ["phisherman", "sandbox"],
+            "link": ["phisherman", "sandbox", "vision"],
+            # Data protection
+            "data": ["dataguard", "encryption", "compliance"],
+            "sensitive": ["dataguard", "compliance"],
+            "pii": ["dataguard", "compliance", "legal"],
+            "gdpr": ["compliance", "legal", "dataguard"],
+            "download": ["dataguard", "behavioral"],
+            "encrypt": ["encryption", "crypto", "backup"],
+            "secret": ["secret", "dataguard"],
+            "key": ["secret", "crypto"],
+            "token": ["secret", "api"],
+            # Specialized threats
+            "supply": ["supply", "scanner", "vuln"],
+            "package": ["supply", "scanner"],
+            "dependency": ["supply", "vuln"],
+            "vuln": ["vuln", "scanner", "surface"],
+            "cve": ["vuln", "scanner"],
+            "patch": ["vuln", "change"],
+            "waf": ["waf", "api"],
+            "bot": ["bot", "waf", "behavioral"],
+            "fraud": ["fraud", "behavioral", "identity"],
+            "insider": ["behavioral", "dataguard", "identity"],
+            "anomaly": ["behavioral", "correlator", "tuner"],
+            # Mobile/IoT/OT
+            "mobile": ["mobile", "endpoint"],
+            "android": ["mobile", "sandbox"],
+            "ios": ["mobile"],
+            "iot": ["ot", "netwatch"],
+            "scada": ["ot", "netwatch"],
+            "ics": ["ot", "netwatch"],
+            # Brand/External
+            "brand": ["brand", "darkweb", "social"],
+            "typosquat": ["brand", "dns"],
+            "impersonat": ["brand", "social", "phisherman"],
+            "darkweb": ["darkweb", "intel"],
+            "leak": ["darkweb", "dataguard"],
+            "breach": ["darkweb", "forensics", "legal"],
+            # Simulation/Testing
+            "pentest": ["redsim", "simulator"],
+            "red": ["redsim", "simulator"],
+            "attack": ["redsim", "correlator"],
+            "mitre": ["redsim", "correlator"],
+            # Compliance/Legal
+            "compliance": ["compliance", "complianceaudit", "legal"],
+            "audit": ["complianceaudit", "compliance"],
+            "regulation": ["compliance", "legal"],
+            "hipaa": ["compliance", "legal", "dataguard"],
+            "pci": ["compliance", "legal", "encryption"],
+            # Recovery/Forensics
+            "forensic": ["forensics", "retro"],
+            "incident": ["forensics", "correlator"],
+            "recover": ["recovery", "backup"],
+            "restore": ["recovery", "backup"],
+            "retro": ["retro", "correlator"],
+            # Physical security
+            "physical": ["physical", "sentinel"],
+            "badge": ["physical", "identity"],
+            "cctv": ["physical"],
+            # Triage/Synth/Sentinel
+            "triage": ["triage", "analyst"],
+            "priority": ["triage"],
+            "synth": ["synth", "correlator"],
+            "synthetic": ["synth"],
+            "sentinel": ["sentinel", "hunter"],
+            "watchdog": ["sentinel", "endpoint"],
+            "integrity": ["sentinel", "forensics"],
         }
         
         for keyword, specialists in specialist_map.items():
