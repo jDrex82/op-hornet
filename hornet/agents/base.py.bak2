@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Base Agent
 Abstract base class with full tool calling support.
 """
@@ -777,7 +777,7 @@ class ToolExecutor:
         self._handlers["deploy_breadcrumb"] = lambda breadcrumb_type, target_host, lure_data=None: deception.deploy_breadcrumb(breadcrumb_type, target_host, lure_data or {})
         self._handlers["create_decoy_account"] = lambda username, account_type="user": deception.create_decoy_account(username, account_type)
     
-    async def execute(self, tool_name: str, arguments: Dict[str, Any], context: "AgentContext" = None) -> Dict[str, Any]:
+    async def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool and return results."""
         handler = self._handlers.get(tool_name)
         if not handler:
@@ -907,7 +907,7 @@ class BaseAgent(ABC):
                             )
                             
                             # Execute tool
-                            result = await tool_executor.execute(tool_name, tool_input, context)
+                            result = await tool_executor.execute(tool_name, tool_input)
                             
                             tool_results.append({
                                 "type": "tool_result",

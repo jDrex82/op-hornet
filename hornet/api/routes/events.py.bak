@@ -1,4 +1,4 @@
-"""HORNET Events API"""
+﻿"""HORNET Events API"""
 from typing import Optional, List
 from uuid import UUID, uuid4
 from datetime import datetime
@@ -71,39 +71,6 @@ def extract_entities_from_data(data: dict) -> List[Dict]:
     
     return entities
 
-async def _index_event_entities(incident_id, tenant_id: str, entities: list):
-    """Index entities for fast cross-incident lookups."""
-    from sqlalchemy import text
-    from hornet.db import get_tenant_session
-    
-    async for session in get_tenant_session():
-        try:
-            await session.execute(text(f"SET app.current_tenant = '{tenant_id}'"))
-            
-            for entity in entities:
-                entity_type = entity.get("type", "unknown")
-                entity_value = entity.get("value", "")
-                if entity_value and entity_type:
-                    await session.execute(
-                        text("""
-                            INSERT INTO incident_entities (incident_id, tenant_id, entity_type, entity_value)
-                            VALUES (:incident_id, :tenant_id, :entity_type, :entity_value)
-                            ON CONFLICT DO NOTHING
-                        """),
-                        {
-                            "incident_id": incident_id,
-                            "tenant_id": tenant_id,
-                            "entity_type": entity_type,
-                            "entity_value": entity_value
-                        }
-                    )
-            
-            await session.commit()
-        except Exception as e:
-            await session.rollback()
-            raise
-
-
 class EventCreate(BaseModel):
     event_type: str = Field(..., description="Event type identifier")
     source: str = Field(..., description="Source system")
@@ -148,7 +115,6 @@ async def ingest_event(
     # Push to event queue for workers
     event_bus = await get_event_bus()
     await event_bus.publish_event(event_dict)
-
     
     return EventResponse(
         id=event_id,

@@ -1,4 +1,4 @@
-"""
+﻿"""
 HORNET Coordinator
 FSM-based incident coordination with agent orchestration.
 """
@@ -255,76 +255,6 @@ Executive Summary:"""
             logger.error("incident_processing_error", incident=str(context.incident_id), error=str(e))
             await self._transition_state(context, FSMState.ERROR)
     
-    async def _check_campaign_escalation(self, context: IncidentContext) -> bool:
-        """Check if this incident is part of a campaign and should be escalated."""
-        try:
-            campaign_data = await incident_repo.find_related_incidents(
-                incident_id=context.incident_id,
-                minutes_back=60
-            )
-            
-            if not campaign_data.get("is_campaign"):
-                return False
-            
-            related_count = len(campaign_data.get("related_incidents", []))
-            shared_entities = campaign_data.get("shared_entities", [])
-            campaign_score = campaign_data.get("campaign_score", 0.0)
-            
-            logger.info(
-                "campaign_check",
-                incident_id=str(context.incident_id),
-                related_count=related_count,
-                campaign_score=campaign_score
-            )
-            
-            should_escalate = (
-                related_count >= 3 or
-                campaign_score >= 0.5 or
-                len(shared_entities) >= 2
-            )
-            
-            if should_escalate:
-                context.campaign_detected = True
-                context.campaign_data = campaign_data
-                context.severity = "CRITICAL"
-                context.confidence = max(context.confidence, 0.85)
-                
-                entity_summary = ", ".join([
-                    f"{e['type']}:{e['value']}({e['incident_count']})"
-                    for e in shared_entities[:5]
-                ])
-                
-                context.campaign_summary = (
-                    f"CAMPAIGN DETECTED: {related_count + 1} linked incidents. "
-                    f"Shared entities: {entity_summary}. "
-                    f"Campaign confidence: {campaign_score:.0%}"
-                )
-                
-                context.add_timeline_event(
-                    "campaign_detected",
-                    agent="coordinator",
-                    details={
-                        "related_incidents": related_count,
-                        "shared_entities": shared_entities,
-                        "campaign_score": campaign_score
-                    }
-                )
-                
-                logger.warning(
-                    "CAMPAIGN_DETECTED",
-                    incident_id=str(context.incident_id),
-                    related_incidents=related_count,
-                    campaign_score=campaign_score
-                )
-                
-                return True
-                
-            return False
-            
-        except Exception as e:
-            logger.error("campaign_check_failed", error=str(e))
-            return False
-
     async def _run_detection(self, context: IncidentContext):
         router = self.agent_registry.get("router")
         if router:
@@ -360,9 +290,6 @@ Executive Summary:"""
                  if name not in ('router', 'analyst', 'responder', 'oversight') 
                  and self.agent_registry.get(name)]
         
-        # Always include correlator for campaign detection
-        if 'correlator' not in squad and self.agent_registry.get('correlator'):
-            squad.append('correlator')
         if not squad:
             squad = ['intel'] if self.agent_registry.get('intel') else []
         
