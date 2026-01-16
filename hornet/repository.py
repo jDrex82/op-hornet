@@ -1,4 +1,4 @@
-﻿"""HORNET Incident Repository - Tenant Aware"""
+"""HORNET Incident Repository - Tenant Aware"""
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
@@ -104,6 +104,13 @@ class IncidentRepository:
         async for session in get_tenant_session():
             where_clauses = []
             params = {"limit": limit, "offset": offset}
+            
+            # Explicit tenant filter (belt AND suspenders with RLS)
+            effective_tenant = tenant_id or current_tenant_id.get()
+            if effective_tenant:
+                where_clauses.append("tenant_id = :tenant_id")
+                params["tenant_id"] = str(effective_tenant)
+            
             if state:
                 where_clauses.append("state = :state")
                 params["state"] = state
