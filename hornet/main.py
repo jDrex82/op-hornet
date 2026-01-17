@@ -1,4 +1,4 @@
-﻿"""HORNET - Autonomous SOC Swarm Main Application"""
+"""HORNET - Autonomous SOC Swarm Main Application"""
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import structlog
@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from hornet.config import get_settings
-from hornet.api.routes import events, incidents, health, config, webhooks, dashboard
+from hornet.api.routes import events, incidents, health, config, webhooks, dashboard, campaigns, reports
 from hornet.event_bus import EventBus
 from hornet.coordinator import Coordinator, AgentRegistry
 from hornet.websocket import websocket_endpoint, ws_manager
@@ -96,6 +96,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
 app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
 app.include_router(incidents.router, prefix="/api/v1/incidents", tags=["Incidents"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+app.include_router(campaigns.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
 app.include_router(config.router, prefix="/api/v1/config", tags=["Configuration"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
 

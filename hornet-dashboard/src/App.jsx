@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
+import { CampaignView } from './CampaignView';
 
 // ============================================================================
 // HORNET - Premium Autonomous SOC Dashboard
@@ -696,6 +697,7 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState('incidents');
+  const [desktopTab, setDesktopTab] = useState('incidents');
   const [filter, setFilter] = useState('all');
   const { apiKey } = useAuth();
 
@@ -790,12 +792,22 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
         ))}
       </div>
 
+      {/* Desktop Tab Bar */}
+      <div className="hidden md:flex gap-2 px-6 mb-4">
+        {['incidents', 'campaigns'].map((tab) => (
+          <button key={tab} onClick={() => setDesktopTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${desktopTab === tab ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
       {/* Mobile Tab Switcher */}
       <div className="md:hidden flex border-b border-white/5">
-        {['incidents', 'health'].map((tab) => (
+        {['incidents', 'campaigns', 'health'].map((tab) => (
           <button key={tab} onClick={() => setMobileTab(tab)}
             className={`flex-1 py-3 text-sm font-medium capitalize ${mobileTab === tab ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-500'}`}>
-            {tab === 'incidents' ? 'Incidents' : 'System'}
+            {tab === 'incidents' ? 'Incidents' : tab === 'campaigns' ? 'Campaigns' : 'System'}
           </button>
         ))}
       </div>
@@ -803,7 +815,7 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
       {/* Main Content - Original Grid Layout */}
       <div className="grid md:grid-cols-[1fr_320px] gap-4 md:gap-6 px-4 md:px-6 pb-6">
         {/* Incident Panel */}
-        <div className={`bg-slate-900/50 border border-white/5 rounded-xl overflow-hidden ${mobileTab !== 'incidents' ? 'hidden md:block' : ''}`}>
+        <div className={`bg-slate-900/50 border border-white/5 rounded-xl overflow-hidden ${mobileTab !== 'incidents' ? 'hidden' : ''} ${desktopTab === 'incidents' ? 'md:block' : 'md:hidden'}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-4 md:px-6 py-4 border-b border-white/5">
             <h2 className="text-sm font-semibold uppercase tracking-wide">Incident Queue</h2>
             <div className="flex gap-2 md:gap-3 w-full sm:w-auto">
@@ -882,8 +894,14 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
           )}
         </div>
 
+        {/* Campaigns Panel */}
+        <div className={`bg-slate-900/50 border border-white/5 rounded-xl overflow-hidden p-4 md:p-6 ${mobileTab !== 'campaigns' ? 'hidden' : ''} ${desktopTab === 'campaigns' ? 'md:block' : 'md:hidden'}`}>
+          <h2 className="text-lg font-semibold mb-4">Campaign Correlation</h2>
+          <CampaignView apiKey={apiKey} onIncidentClick={(id) => fetchIncidentDetails(id)} />
+        </div>
+
         {/* Sidebar */}
-        <div className={`flex flex-col gap-4 ${mobileTab !== 'health' ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`flex flex-col gap-4 ${mobileTab !== 'health' ? 'hidden' : ''} ${desktopTab === 'incidents' ? 'md:flex' : 'md:hidden'}`}>
           {/* Agent Activity */}
           <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4 md:p-5">
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Agent Activity</h3>
@@ -891,6 +909,7 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
               {['Intel', 'Analyst', 'Responder', 'Oversight', 'Router'].map((agent) => (
                 <div key={agent} className="flex justify-between items-center">
                   <span className="text-sm text-slate-400">{agent}</span>
+
                   <span className="text-xs font-medium text-green-400">● Ready</span>
                 </div>
               ))}
@@ -1121,7 +1140,37 @@ const Dashboard = ({ onLogout, onBenchmarks }) => {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/5">
-              <button className="border border-white/15 text-slate-400 hover:text-white px-5 py-2 rounded-lg text-sm font-medium transition-all">Export Report</button>
+              <button 
+                onClick={() => {
+                  const url = `${API_BASE}/api/v1/reports/${selectedIncident.id}/pdf`;
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `HORNET_Incident_${selectedIncident.id.substring(0,8)}.pdf`);
+                  
+                  // Add API key header via fetch and blob
+                  fetch(url, {
+                    headers: { 'X-API-Key': apiKey || localStorage.getItem('hornet_api_key') }
+                  })
+                  .then(res => res.blob())
+                  .then(blob => {
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = `HORNET_Incident_${selectedIncident.id.substring(0,8)}_${new Date().toISOString().split('T')[0]}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                  })
+                  .catch(err => console.error('PDF export failed:', err));
+                }}
+                className="border border-amber-500/50 text-amber-400 hover:bg-amber-500 hover:text-slate-950 px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="18"/><line x1="15" y1="15" x2="12" y2="18"/>
+                </svg>
+                Export PDF
+              </button>
               <button className="border border-white/15 text-slate-400 hover:text-white px-5 py-2 rounded-lg text-sm font-medium transition-all">View Raw Data</button>
               {selectedIncident.state === 'ERROR' && (
                 <button className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 px-5 py-2 rounded-lg text-sm font-semibold">Retry Processing</button>
