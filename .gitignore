@@ -29,3 +29,10 @@ fix-*.js
 # OS
 .DS_Store
 Thumbs.db
+
+__pycache__/
+*.pyc
+fix-*.js
+debug*.js
+check-*.js
+test_report.pdf
