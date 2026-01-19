@@ -35,40 +35,53 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         environment=settings.ENVIRONMENT,
         log_level=settings.LOG_LEVEL,
     )
-    
+
     logger.info("hornet_starting", version=settings.APP_VERSION)
-    
+
     # Initialize event bus
     app.state.event_bus = EventBus()
     await app.state.event_bus.connect()
-    
+
     # Initialize agent registry with all agents
     app.state.agent_registry = AgentRegistry.create_default()
     logger.info("agents_registered", count=len(app.state.agent_registry.get_all()))
-    
+
     # Initialize coordinator
     app.state.coordinator = Coordinator(
         event_bus=app.state.event_bus,
         agent_registry=app.state.agent_registry,
     )
-    
+
+    # 🐝 Start Event Dispatcher - connects events to agent swarm
+    from hornet.dispatcher import start_dispatcher
+    app.state.dispatcher = await start_dispatcher(
+        event_bus=app.state.event_bus,
+        coordinator=app.state.coordinator,
+    )
+    logger.info("dispatcher_started", stats=app.state.dispatcher.stats)
+
     # Start retry queue processor
     from hornet.retry_queue import retry_queue
     import asyncio
     retry_task = asyncio.create_task(retry_queue.start_processor(interval_seconds=30))
-    
+
     logger.info("hornet_ready", agents=len(app.state.agent_registry.get_all()))
-    
+
     yield
-    
+
     logger.info("hornet_shutting_down")
+    
+    # Stop dispatcher
+    if hasattr(app.state, 'dispatcher'):
+        await app.state.dispatcher.stop()
+    
     retry_queue.stop_processor()
     await app.state.event_bus.disconnect()
 
 
 app = FastAPI(
     title="HORNET",
-    description="Autonomous SOC Swarm - 54-Agent Security Operations Center",
+    description="Autonomous SOC Swarm - 56-Agent Security Operations Center",
     version=settings.APP_VERSION,
     lifespan=lifespan,
 )
@@ -116,7 +129,6 @@ async def websocket_route(websocket: WebSocket, tenant_id: str, api_key: str = N
     await websocket_endpoint(websocket, tenant_id, api_key)
 
 
-# Metrics endpoint
 # Edge Agent WebSocket endpoint
 @app.websocket("/api/v1/edge/connect")
 async def edge_websocket_route(websocket: WebSocket, api_key: str = Query(None)):
@@ -136,12 +148,14 @@ async def edge_status(tenant: dict = Depends(get_current_tenant)):
         } for a in agents],
     }
 
+
 # Send action to Edge Agents
 class EdgeActionRequest(BaseModel):
     incident_id: str
     action_type: str
     target: str
     parameters: dict = {}
+
 
 @app.post("/api/v1/edge/action")
 async def send_edge_action(
@@ -164,6 +178,20 @@ async def send_edge_action(
     }
 
 
+# 🐝 Dispatcher status endpoint
+@app.get("/api/v1/dispatcher/status")
+async def dispatcher_status():
+    """Get Event Dispatcher statistics."""
+    if hasattr(app.state, 'dispatcher'):
+        stats = app.state.dispatcher.stats
+        # Add queue depth from event bus
+        try:
+            stats["queue_depth"] = await app.state.event_bus.get_queue_depth()
+            stats["pending_acks"] = await app.state.event_bus.get_pending_count()
+        except Exception:
+            pass
+        return stats
+    return {"error": "dispatcher_not_initialized"}
 
 
 @app.get("/metrics")
@@ -182,6 +210,7 @@ async def root():
         "dashboard": "/dashboard",
         "docs": "/docs",
         "health": "/api/v1/health",
+        "dispatcher": "/api/v1/dispatcher/status",
     }
 
 
@@ -198,4 +227,3 @@ async def replay_dlq_item(item_id: str, tenant: dict = Depends(get_current_tenan
     from hornet.retry_queue import retry_queue
     success = await retry_queue.replay_dlq_item(item_id)
     return {"success": success}
-
