@@ -1,4 +1,4 @@
-﻿"""
+"""
 HORNET Edge Gateway
 Handles connections from Edge Agents deployed in customer networks.
 """
@@ -122,7 +122,7 @@ class EdgeGateway:
         if agent_id in self._agents:
             self._agents[agent_id].last_heartbeat = datetime.utcnow()
 
-    async def handle_log_batch(self, agent_id: str, batch: dict) -> dict:
+    async def handle_log_batch(self, agent_id: str, batch: dict, event_bus=None) -> dict:
         agent = self._agents.get(agent_id)
         if not agent:
             return {"error": "unknown_agent"}
@@ -133,10 +133,35 @@ class EdgeGateway:
         logger.info("edge_log_batch_received", agent_id=agent_id,
                    tenant_id=agent.tenant_id, batch_id=batch_id, event_count=len(events))
 
-        # Forward to event ingestion
+        # Publish each event to the event bus for processing by the swarm
+        published = 0
         for event in events:
-            logger.debug("edge_event", agent_id=agent_id,
-                        event_type=event.get("event_type"), source=event.get("source"))
+            try:
+                from uuid import uuid4 as make_uuid
+                event_id = str(make_uuid())
+                incident_id = str(make_uuid())
+                
+                event_dict = {
+                    "id": event_id,
+                    "event_type": event.get("event_type", "unknown"),
+                    "source": event.get("source", agent.hostname),
+                    "source_type": event.get("source_type", "edge_agent"),
+                    "severity": event.get("severity", "LOW"),
+                    "timestamp": event.get("timestamp", datetime.utcnow().isoformat()),
+                    "entities": event.get("entities", []),
+                    "data": event.get("raw", event),
+                    "tenant_id": agent.tenant_id,
+                    "incident_id": incident_id,
+                    "edge_agent_id": agent_id,
+                }
+                
+                if event_bus:
+                    await event_bus.publish_event(event_dict)
+                    published += 1
+                    logger.debug("edge_event_published", event_id=event_id, 
+                               event_type=event_dict["event_type"])
+            except Exception as e:
+                logger.error("edge_event_publish_failed", error=str(e))
 
         return {"type": "batch_ack", "batch_id": batch_id,
                 "accepted": len(events), "timestamp": datetime.utcnow().isoformat()}
@@ -187,7 +212,7 @@ class EdgeGateway:
 edge_gateway = EdgeGateway()
 
 
-async def edge_websocket_endpoint(websocket: WebSocket, api_key: str = Query(None)):
+async def edge_websocket_endpoint(websocket: WebSocket, api_key: str = Query(None), event_bus=None):
     """WebSocket endpoint for Edge Agent connections."""
     tenant = await edge_gateway.authenticate(api_key)
     if not tenant:
@@ -226,7 +251,7 @@ async def edge_websocket_endpoint(websocket: WebSocket, api_key: str = Query(Non
                 edge_gateway.update_heartbeat(agent.agent_id)
                 await websocket.send_json({"type": "heartbeat_ack", "server_time": datetime.utcnow().isoformat()})
             elif msg_type == "log_batch":
-                ack = await edge_gateway.handle_log_batch(agent.agent_id, msg)
+                ack = await edge_gateway.handle_log_batch(agent.agent_id, msg, event_bus)
                 await websocket.send_json(ack)
             elif msg_type == "action_result":
                 ack = edge_gateway.handle_action_result(agent.agent_id, msg)

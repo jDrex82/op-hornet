@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import structlog
 
+from pydantic import BaseModel
 from fastapi import FastAPI, Request, WebSocket, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -119,7 +120,7 @@ async def websocket_route(websocket: WebSocket, tenant_id: str, api_key: str = N
 # Edge Agent WebSocket endpoint
 @app.websocket("/api/v1/edge/connect")
 async def edge_websocket_route(websocket: WebSocket, api_key: str = Query(None)):
-    await edge_websocket_endpoint(websocket, api_key)
+    await edge_websocket_endpoint(websocket, api_key, event_bus=app.state.event_bus)
 
 
 # Edge Gateway status endpoint
@@ -134,6 +135,35 @@ async def edge_status(tenant: dict = Depends(get_current_tenant)):
             "last_heartbeat": a.last_heartbeat.isoformat(), "capabilities": a.capabilities,
         } for a in agents],
     }
+
+# Send action to Edge Agents
+class EdgeActionRequest(BaseModel):
+    incident_id: str
+    action_type: str
+    target: str
+    parameters: dict = {}
+
+@app.post("/api/v1/edge/action")
+async def send_edge_action(
+    action_req: EdgeActionRequest,
+    tenant: dict = Depends(get_current_tenant),
+):
+    """Send a signed action to all Edge Agents for this tenant."""
+    action = edge_gateway.create_signed_action(
+        tenant_id=tenant["tenant_id"],
+        incident_id=action_req.incident_id,
+        action_type=action_req.action_type,
+        target=action_req.target,
+        parameters=action_req.parameters,
+    )
+    sent = await edge_gateway.broadcast_action_to_tenant(tenant["tenant_id"], action)
+    return {
+        "action_id": action.action_id,
+        "sent_to_agents": sent,
+        "expires_at": action.expires_at,
+    }
+
+
 
 
 @app.get("/metrics")
