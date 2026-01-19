@@ -46,19 +46,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.agent_registry = AgentRegistry.create_default()
     logger.info("agents_registered", count=len(app.state.agent_registry.get_all()))
 
-    # Initialize coordinator
+    # Initialize coordinator (for API-triggered incidents, not event processing)
     app.state.coordinator = Coordinator(
         event_bus=app.state.event_bus,
         agent_registry=app.state.agent_registry,
     )
-
-    # 🐝 Start Event Dispatcher - connects events to agent swarm
-    from hornet.dispatcher import start_dispatcher
-    app.state.dispatcher = await start_dispatcher(
-        event_bus=app.state.event_bus,
-        coordinator=app.state.coordinator,
-    )
-    logger.info("dispatcher_started", stats=app.state.dispatcher.stats)
+    
+    # Note: Event processing happens in worker processes (python -m hornet.worker)
+    # Workers scale horizontally and do detection scoring before creating incidents
+    logger.info("coordinator_initialized")
 
     # Start retry queue processor
     from hornet.retry_queue import retry_queue
@@ -70,10 +66,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     logger.info("hornet_shutting_down")
-    
-    # Stop dispatcher
-    if hasattr(app.state, 'dispatcher'):
-        await app.state.dispatcher.stop()
     
     retry_queue.stop_processor()
     await app.state.event_bus.disconnect()
@@ -178,20 +170,38 @@ async def send_edge_action(
     }
 
 
-# 🐝 Dispatcher status endpoint
-@app.get("/api/v1/dispatcher/status")
-async def dispatcher_status():
-    """Get Event Dispatcher statistics."""
-    if hasattr(app.state, 'dispatcher'):
-        stats = app.state.dispatcher.stats
-        # Add queue depth from event bus
+# 🐝 Worker queue status endpoint
+@app.get("/api/v1/workers/status")
+async def worker_queue_status():
+    """Get event queue statistics for workers."""
+    try:
+        queue_depth = await app.state.event_bus.get_queue_depth()
+        pending_acks = await app.state.event_bus.get_pending_count()
+        
+        # Get consumer group info from Redis
+        import redis.asyncio as redis
+        r = redis.from_url(settings.REDIS_URL, decode_responses=False)
         try:
-            stats["queue_depth"] = await app.state.event_bus.get_queue_depth()
-            stats["pending_acks"] = await app.state.event_bus.get_pending_count()
-        except Exception:
-            pass
-        return stats
-    return {"error": "dispatcher_not_initialized"}
+            groups = await r.xinfo_groups(app.state.event_bus.EVENTS_STREAM)
+            worker_info = []
+            for g in groups:
+                worker_info.append({
+                    "group": g.get(b"name", b"").decode(),
+                    "consumers": g.get(b"consumers", 0),
+                    "pending": g.get(b"pending", 0),
+                    "lag": g.get(b"lag", 0),
+                })
+        finally:
+            await r.close()
+        
+        return {
+            "queue_depth": queue_depth,
+            "pending_acks": pending_acks,
+            "consumer_groups": worker_info,
+            "note": "Workers process events via 'python -m hornet.worker'"
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/metrics")
@@ -210,7 +220,7 @@ async def root():
         "dashboard": "/dashboard",
         "docs": "/docs",
         "health": "/api/v1/health",
-        "dispatcher": "/api/v1/dispatcher/status",
+        "workers": "/api/v1/workers/status",
     }
 
 
