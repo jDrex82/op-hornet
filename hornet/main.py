@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import structlog
 
-from fastapi import FastAPI, Request, WebSocket, Depends
+from fastapi import FastAPI, Request, WebSocket, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -12,6 +12,7 @@ from hornet.api.routes import events, incidents, health, config, webhooks, dashb
 from hornet.event_bus import EventBus
 from hornet.coordinator import Coordinator, AgentRegistry
 from hornet.websocket import websocket_endpoint, ws_manager
+from hornet.edge_gateway import edge_websocket_endpoint, edge_gateway
 from hornet.metrics import metrics_endpoint
 from hornet.middleware import (
     RateLimitMiddleware,
@@ -115,6 +116,26 @@ async def websocket_route(websocket: WebSocket, tenant_id: str, api_key: str = N
 
 
 # Metrics endpoint
+# Edge Agent WebSocket endpoint
+@app.websocket("/api/v1/edge/connect")
+async def edge_websocket_route(websocket: WebSocket, api_key: str = Query(None)):
+    await edge_websocket_endpoint(websocket, api_key)
+
+
+# Edge Gateway status endpoint
+@app.get("/api/v1/edge/status")
+async def edge_status(tenant: dict = Depends(get_current_tenant)):
+    agents = edge_gateway.get_agents_for_tenant(tenant["tenant_id"])
+    return {
+        "connected_agents": len(agents),
+        "agents": [{
+            "agent_id": a.agent_id, "hostname": a.hostname, "version": a.version,
+            "connected_at": a.connected_at.isoformat(),
+            "last_heartbeat": a.last_heartbeat.isoformat(), "capabilities": a.capabilities,
+        } for a in agents],
+    }
+
+
 @app.get("/metrics")
 async def get_metrics():
     content, content_type = await metrics_endpoint()
